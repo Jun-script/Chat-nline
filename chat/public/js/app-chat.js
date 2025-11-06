@@ -2,10 +2,181 @@
  * App Chat
  */
 
+// This is a simple example of a pre-shared key.
+// In a real application, you should use a key exchange mechanism like Diffie-Hellman.
+const sharedKey = 'my-super-secret-key';
+let cryptoKey;
+
+async function importKey() {
+    const keyData = new TextEncoder().encode(sharedKey);
+    // use sha-256 to derive a 32-byte key
+    const digest = await crypto.subtle.digest('SHA-256', keyData);
+    cryptoKey = await crypto.subtle.importKey(
+        'raw',
+        digest,
+        { name: 'AES-GCM' },
+        false,
+        ['encrypt', 'decrypt']
+    );
+}
+
+async function encryptMessage(message) {
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const encodedMessage = new TextEncoder().encode(message);
+    const encryptedMessage = await crypto.subtle.encrypt(
+        { name: 'AES-GCM', iv },
+        cryptoKey,
+        encodedMessage
+    );
+    // return a single buffer with iv and encrypted message
+    const buffer = new Uint8Array(iv.length + encryptedMessage.byteLength);
+    buffer.set(iv, 0);
+    buffer.set(new Uint8Array(encryptedMessage), iv.length);
+    return buffer;
+}
+
+async function decryptMessage(encryptedBuffer) {
+    const iv = encryptedBuffer.slice(0, 12);
+    const encryptedMessage = encryptedBuffer.slice(12);
+    const decryptedMessage = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv },
+        cryptoKey,
+        encryptedMessage
+    );
+    return new TextDecoder().decode(decryptedMessage);
+}
+
+importKey();
+
 'use strict';
 
 document.addEventListener('DOMContentLoaded', function () {
   (function () {
+    const ws = new WebSocket('ws://127.0.0.1:8080');
+
+    ws.onopen = () => {
+        console.log('Connected to the signaling server');
+    };
+
+    ws.onmessage = async event => {
+        console.log('Message from server ', event.data);
+        const message = JSON.parse(event.data);
+
+        if (!peerConnection && (message.type === 'offer' || message.type === 'candidate')) {
+            createPeerConnection();
+        }
+
+        switch (message.type) {
+            case 'offer':
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(message.payload));
+                const answer = await peerConnection.createAnswer();
+                await peerConnection.setLocalDescription(answer);
+                ws.send(JSON.stringify({ type: 'answer', payload: answer }));
+                break;
+            case 'answer':
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(message.payload));
+                break;
+            case 'candidate':
+                await peerConnection.addIceCandidate(new RTCIceCandidate(message.payload));
+                break;
+        }
+    };
+
+    ws.onclose = () => {
+        console.log('Disconnected from the signaling server');
+    };
+
+    const localVideo = document.getElementById('localVideo');
+    const remoteVideo = document.getElementById('remoteVideo');
+    let localStream;
+
+    async function startMedia() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            localVideo.srcObject = stream;
+            localStream = stream;
+        } catch (error) {
+            console.error('Error accessing media devices.', error);
+        }
+    }
+
+    startMedia();
+
+    let peerConnection;
+    let dataChannel;
+
+    const configuration = {
+        iceServers: [
+            {
+                urls: 'stun:stun.l.google.com:19302'
+            }
+        ]
+    };
+
+    function createPeerConnection() {
+        peerConnection = new RTCPeerConnection(configuration);
+
+        peerConnection.onicecandidate = event => {
+            if (event.candidate) {
+                ws.send(JSON.stringify({ type: 'candidate', payload: event.candidate }));
+            }
+        };
+
+        peerConnection.ontrack = event => {
+            remoteVideo.srcObject = event.streams[0];
+        };
+
+        if (localStream) {
+            localStream.getTracks().forEach(track => {
+                peerConnection.addTrack(track, localStream);
+            });
+        }
+
+        dataChannel = peerConnection.createDataChannel('chat');
+
+        dataChannel.onopen = () => {
+            console.log('Data channel is open');
+        };
+
+        dataChannel.onmessage = event => {
+            decryptMessage(new Uint8Array(event.data)).then(message => {
+                console.log('Message from data channel: ', message);
+                // Display the message in the chat window
+                let renderMsg = document.createElement('div');
+                renderMsg.className = 'chat-message-text mt-2';
+                renderMsg.innerHTML = '<p class="mb-0 text-break">' + message + '</p>';
+                document.querySelector('li:last-child .chat-message-wrapper').appendChild(renderMsg);
+                scrollToBottom();
+            });
+        };
+
+        peerConnection.ondatachannel = event => {
+            dataChannel = event.channel;
+            dataChannel.onmessage = event => {
+                decryptMessage(new Uint8Array(event.data)).then(message => {
+                    console.log('Message from remote data channel: ', message);
+                    // Display the message in the chat window
+                    let renderMsg = document.createElement('div');
+                    renderMsg.className = 'chat-message-text mt-2';
+                    renderMsg.innerHTML = '<p class="mb-0 text-break">' + message + '</p>';
+                    document.querySelector('li:last-child .chat-message-wrapper').appendChild(renderMsg);
+                    scrollToBottom();
+                });
+            };
+        };
+    }
+
+
+    const callButton = document.getElementById('callButton');
+    if(callButton) {
+        callButton.addEventListener('click', async () => {
+            createPeerConnection();
+            const offer = await peerConnection.createOffer();
+            await peerConnection.setLocalDescription(offer);
+            ws.send(JSON.stringify({ type: 'offer', payload: offer }));
+        });
+    }
+
     const chatContactsBody = document.querySelector('.app-chat-contacts .sidebar-body'),
       chatContactListItems = [].slice.call(
         document.querySelectorAll('.chat-contact-list-item:not(.chat-contact-list-item-title)')
@@ -159,6 +330,13 @@ document.addEventListener('DOMContentLoaded', function () {
     formSendMessage.addEventListener('submit', e => {
       e.preventDefault();
       if (messageInput.value) {
+        // Encrypt and send message through data channel
+        if (dataChannel && dataChannel.readyState === 'open') {
+            encryptMessage(messageInput.value).then(encrypted => {
+                dataChannel.send(encrypted);
+            });
+        }
+
         // Create a div and add a class
         let renderMsg = document.createElement('div');
         renderMsg.className = 'chat-message-text mt-2';
