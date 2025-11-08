@@ -32,12 +32,15 @@ Bu dosya, WebRTC tabanlı, uçtan uca şifreli sohbet uygulamasını geliştirir
 - [x] Gelen sinyal mesajlarına (offer, answer, candidate) göre bağlantıyı kurma işlevlerini yaz.
 - [x] Metin mesajlaşması için `createDataChannel` ile bir veri kanalı oluşturma ve yönetme kodunu ekle.
 
-## Adım 5: Güvenlik ve Şifreleme
+## Adım 5: Mesajlaşma Arayüzü Entegrasyonu
+- [x] Veri kanalı üzerinden mesaj gönderme ve alma işlevlerini kullanıcı arayüzüne bağla.
 
-- [x] Metin mesajlarını göndermeden önce şifreleme, alınınca deşifreleme yapacak fonksiyonları `app-chat.js` içine ekle.
+## Adım 6: Güvenlik ve Şifreleme
+
+- [x] Metin mesajlarını göndermeden önce şifreleme, alınınca deşifreleme yapacak fonksiyonları `app-chat.js` içine ekle. (Not: Bu fonksiyonların `DataChannel` ile entegrasyonu Adım 5'te yapılacaktır.)
 - [ ] Sunucu yapılandırmasında WSS (WebSocket Secure) kullanılmasını sağla. (Not: Üretim ortamı için gereklidir, mevcut temel sunucu `ws` kullanmaktadır.)
 
-## Adım 6: Test ve Tamamlama
+## Adım 7: Test ve Tamamlama
 
 - [x] Uygulamanın temel iskeleti tamamlandı.
 - [ ] **Kullanıcı Testi:** Uygulamayı farklı tarayıcılarda ve cihazlarda test edin.
