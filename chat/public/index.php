@@ -1,3 +1,11 @@
+<?php
+session_start();
+
+if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
+    header("location: login.php");
+    exit;
+}
+?>
 <!DOCTYPE html>
 <html
   lang="en"
@@ -43,6 +51,37 @@
   <body>
     <div class="app-chat card overflow-hidden">
       <div class="row g-0">
+        <div class="col app-chat-contacts app-sidebar flex-grow-0 overflow-hidden border-end" id="app-chat-contacts">
+            <div class="sidebar-body">
+                <ul class="list-unstyled chat-contact-list" id="contact-list">
+                    <li class="chat-contact-list-item chat-contact-list-item-title">
+                        <h5 class="text-primary mb-0">Contacts</h5>
+                    </li>
+                    <?php
+                    require_once "../config.php";
+                    $sql = "SELECT id, username FROM users WHERE id != ?";
+                    if ($stmt = mysqli_prepare($link, $sql)) {
+                        mysqli_stmt_bind_param($stmt, "i", $_SESSION["id"]);
+                        if (mysqli_stmt_execute($stmt)) {
+                            $result = mysqli_stmt_get_result($stmt);
+                            while ($row = mysqli_fetch_assoc($result)) {
+                                echo '<li class="chat-contact-list-item" data-id="' . $row['id'] . '" data-username="' . $row['username'] . '">';
+                                echo '<a class="d-flex align-items-center">';
+                                echo '<div class="flex-shrink-0 avatar avatar-online">';
+                                echo '<img src="assets/img/avatars/1.png" alt="Avatar" class="rounded-circle" />';
+                                echo '</div>';
+                                echo '<div class="chat-contact-info flex-grow-1 ms-3">';
+                                echo '<h6 class="chat-contact-name text-truncate m-0">' . $row['username'] . '</h6>';
+                                echo '</div>';
+                                echo '</a>';
+                                echo '</li>';
+                            }
+                        }
+                    }
+                    ?>
+                </ul>
+            </div>
+        </div>
         <div class="col app-chat-history bg-body">
           <div class="chat-history-wrapper">
             <div class="video-container" style="display: flex; justify-content: space-around; padding: 10px; background: #f0f0f0;">
@@ -95,6 +134,10 @@
         </div>
       </div>
     </div>
+    <script>
+        const userId = <?php echo json_encode($_SESSION['id']); ?>;
+        const username = <?php echo json_encode($_SESSION['username']); ?>;
+    </script>
     <!-- Core JS -->
     <script src="assets/vendor/libs/jquery/jquery.js"></script>
     <script src="assets/vendor/libs/popper/popper.js"></script>

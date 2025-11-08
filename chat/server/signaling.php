@@ -5,6 +5,8 @@
 set_time_limit(0);
 ob_implicit_flush();
 
+require_once '../config.php';
+
 $address = '0.0.0.0';
 $port = 8080;
 
@@ -22,14 +24,16 @@ if (socket_listen($sock, 5) === false) {
     die("socket_listen() failed: " . socket_strerror(socket_last_error($sock)));
 }
 
-$clients = array($sock);
+$clients = [];
 $write = NULL;
 $except = NULL;
 
 echo "WebSocket Sunucusu Başlatıldı: ws://{$address}:{$port}\n";
 
 while (true) {
-    $read = $clients;
+    $read = array_column($clients, 'socket');
+    $read[] = $sock;
+
     if (socket_select($read, $write, $except, 0, 500000) < 1) {
         continue;
     }
@@ -37,12 +41,17 @@ while (true) {
     // Yeni bir bağlantı var mı kontrol et
     if (in_array($sock, $read)) {
         $newsock = socket_accept($sock);
-        $clients[] = $newsock;
         $header = socket_read($newsock, 1024);
-        perform_handshaking($header, $newsock, $address, $port);
+        $userId = perform_handshaking($header, $newsock, $address, $port);
         
-        socket_getpeername($newsock, $ip);
-        echo "Yeni istemci bağlandı: {$ip}\n";
+        if ($userId) {
+            $clients[$userId] = ['socket' => $newsock];
+            socket_getpeername($newsock, $ip);
+            echo "Yeni istemci bağlandı: {$ip}, UserID: {$userId}\n";
+        } else {
+            echo "Geçersiz bağlantı denemesi.\n";
+            socket_close($newsock);
+        }
 
         // Yeni bağlantıyı diğer okuma soketlerinden çıkar
         $key = array_search($sock, $read);
@@ -55,10 +64,13 @@ while (true) {
 
         // Bağlantı kapandı mı kontrol et
         if ($data === false) {
-            $key = array_search($read_sock, $clients);
-            unset($clients[$key]);
-            socket_getpeername($read_sock, $ip);
-            echo "İstemci bağlantısı kesildi: {$ip}\n";
+            foreach ($clients as $userId => $client) {
+                if ($client['socket'] === $read_sock) {
+                    unset($clients[$userId]);
+                    echo "İstemci bağlantısı kesildi: UserID: {$userId}\n";
+                    break;
+                }
+            }
             continue;
         }
 
@@ -66,19 +78,31 @@ while (true) {
         if($data) {
             // Gelen JSON verisini çöz
             $message = json_decode($data, true);
-            if (json_last_error() === JSON_ERROR_NONE) {
+            if (json_last_error() === JSON_ERROR_NONE && isset($message['to'])) {
                 echo "Gelen Mesaj: " . $data . "\n";
+                $to = $message['to'];
+                $from = array_search($read_sock, array_column($clients, 'socket'));
+                $fromUserId = array_keys($clients)[$from];
 
-                // Diğer istemcilere broadcast yap
-                foreach ($clients as $send_sock) {
-                    // Ana sokete ve gönderen istemciye tekrar gönderme
-                    if ($send_sock != $sock && $send_sock != $read_sock) {
-                        $response = mask($data); // Gelen orijinal JSON verisini maskeleyip gönder
-                        @socket_write($send_sock, $response, strlen($response));
+
+                if ($message['type'] === 'text-message') {
+                    $payload = implode(array_map("chr", $message['payload']));
+                    $sql = "INSERT INTO messages (sender_id, receiver_id, message) VALUES (?, ?, ?)";
+                    if ($stmt = mysqli_prepare($link, $sql)) {
+                        mysqli_stmt_bind_param($stmt, "iis", $fromUserId, $to, $payload);
+                        mysqli_stmt_execute($stmt);
+                        mysqli_stmt_close($stmt);
                     }
                 }
+
+                if (isset($clients[$to])) {
+                    $response = mask($data);
+                    @socket_write($clients[$to]['socket'], $response, strlen($response));
+                } else {
+                    echo "Hedef kullanıcı bulunamadı: {$to}\n";
+                }
             } else {
-                echo "Geçersiz JSON formatı: {$data}\n";
+                echo "Geçersiz JSON formatı veya hedef kullanıcı belirtilmemiş: {$data}\n";
             }
         }
     }
@@ -97,6 +121,14 @@ function perform_handshaking($receved_header, $client_conn, $host, $port)
         }
     }
 
+    // Extract userId from the request URI
+    preg_match("/GET \/\?userId=(\d+) HTTP/", $receved_header, $matches);
+    $userId = isset($matches[1]) ? $matches[1] : null;
+
+    if (!$userId) {
+        return null;
+    }
+
     $secKey = $headers['Sec-WebSocket-Key'];
     $secAccept = base64_encode(pack('H*', sha1($secKey . '258EAFA5-E914-47DA-95CA-C5AB0DC85B11')));
     $upgrade  = "HTTP/1.1 101 Web Socket Protocol Handshake\r\n" .
@@ -106,6 +138,8 @@ function perform_handshaking($receved_header, $client_conn, $host, $port)
     "WebSocket-Location: ws://$host:$port/deamon.php\r\n" .
     "Sec-WebSocket-Accept:$secAccept\r\n\r\n";
     socket_write($client_conn, $upgrade, strlen($upgrade));
+
+    return $userId;
 }
 
 function unmask($text)

@@ -52,7 +52,8 @@ importKey();
 
 document.addEventListener('DOMContentLoaded', function () {
   (function () {
-    const ws = new WebSocket('ws://127.0.0.1:8080');
+    const ws = new WebSocket('ws://127.0.0.1:8080?userId=' + userId);
+    let chatWithUserId = null;
 
     ws.onopen = () => {
         console.log('Connected to the signaling server');
@@ -71,13 +72,22 @@ document.addEventListener('DOMContentLoaded', function () {
                 await peerConnection.setRemoteDescription(new RTCSessionDescription(message.payload));
                 const answer = await peerConnection.createAnswer();
                 await peerConnection.setLocalDescription(answer);
-                ws.send(JSON.stringify({ type: 'answer', payload: answer }));
+                ws.send(JSON.stringify({ to: chatWithUserId, type: 'answer', payload: answer }));
                 break;
             case 'answer':
                 await peerConnection.setRemoteDescription(new RTCSessionDescription(message.payload));
                 break;
             case 'candidate':
                 await peerConnection.addIceCandidate(new RTCIceCandidate(message.payload));
+                break;
+            case 'text-message':
+                const decryptedMessage = await decryptMessage(new Uint8Array(message.payload));
+                // Display the message in the chat window
+                let renderMsg = document.createElement('div');
+                renderMsg.className = 'chat-message-text mt-2';
+                renderMsg.innerHTML = '<p class="mb-0 text-break">' + decryptedMessage + '</p>';
+                document.querySelector('.chat-history-body .chat-history').appendChild(renderMsg);
+                scrollToBottom();
                 break;
         }
     };
@@ -103,7 +113,6 @@ document.addEventListener('DOMContentLoaded', function () {
     startMedia();
 
     let peerConnection;
-    let dataChannel;
 
     const configuration = {
         iceServers: [
@@ -118,7 +127,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         peerConnection.onicecandidate = event => {
             if (event.candidate) {
-                ws.send(JSON.stringify({ type: 'candidate', payload: event.candidate }));
+                ws.send(JSON.stringify({ to: chatWithUserId, type: 'candidate', payload: event.candidate }));
             }
         };
 
@@ -131,49 +140,20 @@ document.addEventListener('DOMContentLoaded', function () {
                 peerConnection.addTrack(track, localStream);
             });
         }
-
-        dataChannel = peerConnection.createDataChannel('chat');
-
-        dataChannel.onopen = () => {
-            console.log('Data channel is open');
-        };
-
-        dataChannel.onmessage = event => {
-            decryptMessage(new Uint8Array(event.data)).then(message => {
-                console.log('Message from data channel: ', message);
-                // Display the message in the chat window
-                let renderMsg = document.createElement('div');
-                renderMsg.className = 'chat-message-text mt-2';
-                renderMsg.innerHTML = '<p class="mb-0 text-break">' + message + '</p>';
-                document.querySelector('li:last-child .chat-message-wrapper').appendChild(renderMsg);
-                scrollToBottom();
-            });
-        };
-
-        peerConnection.ondatachannel = event => {
-            dataChannel = event.channel;
-            dataChannel.onmessage = event => {
-                decryptMessage(new Uint8Array(event.data)).then(message => {
-                    console.log('Message from remote data channel: ', message);
-                    // Display the message in the chat window
-                    let renderMsg = document.createElement('div');
-                    renderMsg.className = 'chat-message-text mt-2';
-                    renderMsg.innerHTML = '<p class="mb-0 text-break">' + message + '</p>';
-                    document.querySelector('li:last-child .chat-message-wrapper').appendChild(renderMsg);
-                    scrollToBottom();
-                });
-            };
-        };
     }
 
 
     const callButton = document.getElementById('callButton');
     if(callButton) {
         callButton.addEventListener('click', async () => {
+            if (!chatWithUserId) {
+                alert('Please select a user to call.');
+                return;
+            }
             createPeerConnection();
             const offer = await peerConnection.createOffer();
             await peerConnection.setLocalDescription(offer);
-            ws.send(JSON.stringify({ type: 'offer', payload: offer }));
+            ws.send(JSON.stringify({ to: chatWithUserId, type: 'offer', payload: offer }));
         });
     }
 
@@ -274,7 +254,39 @@ document.addEventListener('DOMContentLoaded', function () {
           chatContactListItem.classList.remove('active');
         });
         // Add active class to current chat contact list item
-        e.currentTarget.classList.add('active');
+        const clickedUser = e.currentTarget;
+        clickedUser.classList.add('active');
+        chatWithUserId = clickedUser.dataset.id;
+        const username = clickedUser.dataset.username;
+        document.querySelector('.chat-contact-info .m-0').textContent = username;
+        const chatHistoryBody = document.querySelector('.chat-history-body .chat-history');
+        chatHistoryBody.innerHTML = '';
+
+        fetch('get_messages.php?to=' + chatWithUserId)
+            .then(response => response.json())
+            .then(messages => {
+                messages.forEach(async message => {
+                    const decryptedMessage = await decryptMessage(new Uint8Array(message.message.split(',').map(Number)));
+                    let renderMsg = document.createElement('li');
+                    renderMsg.className = 'chat-message ' + (message.sender_id == userId ? 'chat-message-right' : '');
+                    let messageHtml = '<div class="d-flex overflow-hidden">';
+                    if (message.sender_id != userId) {
+                        messageHtml += '<div class="user-avatar flex-shrink-0 me-3"><div class="avatar avatar-sm"><img src="assets/img/avatars/1.png" alt="Avatar" class="rounded-circle" /></div></div>';
+                    }
+                    messageHtml += '<div class="chat-message-wrapper flex-grow-1">';
+                    messageHtml += '<div class="chat-message-text">';
+                    messageHtml += '<p class="mb-0 text-break">' + decryptedMessage + '</p>';
+                    messageHtml += '</div>';
+                    messageHtml += '</div>';
+                    if (message.sender_id == userId) {
+                        messageHtml += '<div class="user-avatar flex-shrink-0 ms-3"><div class="avatar avatar-sm"><img src="assets/img/avatars/1.png" alt="Avatar" class="rounded-circle" /></div></div>';
+                    }
+                    messageHtml += '</div>';
+                    renderMsg.innerHTML = messageHtml;
+                    chatHistoryBody.appendChild(renderMsg);
+                });
+                scrollToBottom();
+            });
       });
     });
 
@@ -329,19 +341,16 @@ document.addEventListener('DOMContentLoaded', function () {
     // Send Message
     formSendMessage.addEventListener('submit', e => {
       e.preventDefault();
-      if (messageInput.value) {
-        // Encrypt and send message through data channel
-        if (dataChannel && dataChannel.readyState === 'open') {
-            encryptMessage(messageInput.value).then(encrypted => {
-                dataChannel.send(encrypted);
-            });
-        }
+      if (messageInput.value && chatWithUserId) {
+        encryptMessage(messageInput.value).then(encrypted => {
+            ws.send(JSON.stringify({ to: chatWithUserId, type: 'text-message', payload: Array.from(encrypted) }));
+        });
 
         // Create a div and add a class
         let renderMsg = document.createElement('div');
         renderMsg.className = 'chat-message-text mt-2';
         renderMsg.innerHTML = '<p class="mb-0 text-break">' + messageInput.value + '</p>';
-        document.querySelector('li:last-child .chat-message-wrapper').appendChild(renderMsg);
+        document.querySelector('.chat-history-body .chat-history').appendChild(renderMsg);
         messageInput.value = '';
         scrollToBottom();
       }
@@ -350,9 +359,11 @@ document.addEventListener('DOMContentLoaded', function () {
     // on click of chatHistoryHeaderMenu, Remove data-overlay attribute from chatSidebarLeftClose to resolve overlay overlapping issue for two sidebar
     let chatHistoryHeaderMenu = document.querySelector(".chat-history-header [data-target='#app-chat-contacts']"),
       chatSidebarLeftClose = document.querySelector('.app-chat-sidebar-left .close-sidebar');
-    chatHistoryHeaderMenu.addEventListener('click', e => {
-      chatSidebarLeftClose.removeAttribute('data-overlay');
-    });
+    if(chatHistoryHeaderMenu) {
+        chatHistoryHeaderMenu.addEventListener('click', e => {
+          chatSidebarLeftClose.removeAttribute('data-overlay');
+        });
+    }
     // }
 
     // Speech To Text
