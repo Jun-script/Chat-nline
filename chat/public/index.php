@@ -53,12 +53,37 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
       <div class="row g-0">
         <div class="col app-chat-contacts app-sidebar flex-grow-0 overflow-hidden border-end" id="app-chat-contacts">
             <div class="sidebar-body">
+            <div class="d-flex align-items-center me-3 me-lg-0">
+              <div class="flex-shrink-0 avatar avatar-online">
+                <img src="assets/img/avatars/1.png" alt="Avatar" class="rounded-circle" />
+              </div>
+              <div class="flex-grow-1 ms-3">
+                <h6 class="mb-0"><?php echo htmlspecialchars($_SESSION["username"]); ?></h6>
+              </div>
+              <a href="logout.php" class="btn btn-icon btn-sm"><i class="bx bx-log-out"></i></a>
+            </div>
+            <div class="d-flex align-items-center mt-3 px-2">
+              <div class="input-group input-group-merge">
+                <span class="input-group-text" id="basic-addon-search31"><i class="bx bx-search"></i></span>
+                <input
+                  type="text"
+                  class="form-control"
+                  placeholder="Search..."
+                  aria-label="Search..."
+                  aria-describedby="basic-addon-search31"
+                  id="chat-search-input"
+                />
+              </div>
+            </div>
                 <ul class="list-unstyled chat-contact-list" id="contact-list">
                     <li class="chat-contact-list-item chat-contact-list-item-title">
                         <h5 class="text-primary mb-0">Contacts</h5>
                     </li>
+                    <li class="contact-list-item-0 d-none">
+                      <h6 class="text-muted mb-0">No contacts found</h6>
+                    </li>
                     <?php
-                    require_once "../config.php";
+                    require_once "config.php";
                     $sql = "SELECT id, username FROM users WHERE id != ?";
                     if ($stmt = mysqli_prepare($link, $sql)) {
                         mysqli_stmt_bind_param($stmt, "i", $_SESSION["id"]);

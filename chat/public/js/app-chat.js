@@ -291,22 +291,16 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Filter Chats
+    const searchInput = document.querySelector('#chat-search-input');
     if (searchInput) {
       searchInput.addEventListener('keyup', e => {
         let searchValue = e.currentTarget.value.toLowerCase(),
-          searchChatListItemsCount = 0,
           searchContactListItemsCount = 0,
-          chatListItem0 = document.querySelector('.chat-list-item-0'),
           contactListItem0 = document.querySelector('.contact-list-item-0'),
-          searchChatListItems = [].slice.call(
-            document.querySelectorAll('#chat-list li:not(.chat-contact-list-item-title)')
-          ),
           searchContactListItems = [].slice.call(
             document.querySelectorAll('#contact-list li:not(.chat-contact-list-item-title)')
           );
 
-        // Search in chats
-        searchChatContacts(searchChatListItems, searchChatListItemsCount, searchValue, chatListItem0);
         // Search in contacts
         searchChatContacts(searchContactListItems, searchContactListItemsCount, searchValue, contactListItem0);
       });
