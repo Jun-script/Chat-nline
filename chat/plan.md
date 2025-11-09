@@ -24,16 +24,16 @@ Kullanıcıların, arkadaşlık kodu sistemiyle birbirlerini ekleyerek özel ola
 - [X] **Parçalı PHP Dosyaları:** `pages` klasörü içinde `header.php`, `sidebar.php` dosyalarını oluştur.
 - [X] **Ana Index Dosyası:** Proje kökünde, parçalı PHP dosyalarını `require` ile birleştirecek olan `index.php` dosyasını oluştur.
 - [X] **Yapılandırma Dosyası:** Veritabanı bağlantısı ve genel ayarlar için `config.php` dosyasını oluştur.
-- [ ] **Veritabanı Tasarımı:** `users` (arkadaşlık kodu sütunu ile), `contacts` (arkadaşlık ilişkileri için) ve `messages` (okundu bilgisi ile) tablolarının yapısını tasarla.
-- [ ] **SQL Dosyası:** Tasarlanan yapıya göre `database.sql` dosyasını oluştur.
+- [X] **Veritabanı Tasarımı:** `users`, `contacts` ve `messages` tablolarının yapısı tasarlandı.
+- [X] **SQL Dosyası:** Tasarlanan yapıya göre `database.sql` dosyası `chat/` dizininde oluşturuldu. (Not: Daha sonra `setup/` dizinine taşınabilir.)
 
 ### Aşama 2: Arayüz İskeletinin Kurulumu
-- [ ] **Sayfa Dosyaları:** `pages/content.php` dosyasını `pages/chat.php` olarak yeniden adlandır. `pages/login.php` ve `pages/register.php` dosyalarını oluştur.
-- [ ] **`index.php` Yönlendirme Mantığı:** `index.php` dosyasını, kullanıcının giriş durumuna ve URL'deki `page` parametresine göre ilgili sayfaları (`login.php`, `register.php`, `chat.php`) yükleyecek şekilde düzenle.
-- [ ] **Temel HTML Yapısı:** `header.php`'ye temel HTML başlangıç, head ve body etiketlerini ekle.
-- [ ] **Sidebar İskeleti:** `sidebar.php` içine daraltılabilir kenar çubuğunun temel HTML iskeletini yerleştir.
-- [ ] **Content İskeleti:** `chat.php` içine üst bar ve ana sohbet alanı için temel HTML iskeletini yerleştir.
-- [ ] **Asset Entegrasyonu:** `Studio(theme)` klasöründen gerekli CSS ve JS dosyalarını `assets` klasörüne kopyala ve `header.php`'den çağır.
+- [X] **Sayfa Dosyaları:** `pages/content.php` dosyasını `pages/chat.php` olarak yeniden adlandır. `pages/login.php` ve `pages/register.php` dosyalarını oluştur.
+- [X] **`index.php` Yönlendirme Mantığı:** `index.php` dosyasını, kullanıcının giriş durumuna ve URL'deki `page` parametresine göre ilgili sayfaları (`login.php`, `register.php`, `chat.php`) yükleyecek şekilde düzenle.
+- [X] **Temel HTML Yapısı:** `header.php`'ye temel HTML başlangıç, head ve body etiketlerini ekle.
+- [X] **Sidebar İskeleti:** `sidebar.php` içine daraltılabilir kenar çubuğunun temel HTML iskeletini yerleştir.
+- [X] **Content İskeleti:** `chat.php` içine üst bar ve ana sohbet alanı için temel HTML iskeletini yerleştir.
+- [X] **Asset Entegrasyonu:** `Studio(theme)` klasöründen gerekli CSS ve JS dosyalarını `assets` klasörüne kopyala ve `header.php`'den çağır.
 
 ### Aşama 3: Kullanıcı İşlemleri
 - [ ] **Kayıt Sayfası:** `register.php` sayfasını ve `api/register.php` backend kodunu oluştur.
@@ -51,3 +51,13 @@ Kullanıcıların, arkadaşlık kodu sistemiyle birbirlerini ekleyerek özel ola
 - [ ] **Arayüzün Doldurulması:** Kişi listesini ve mesajları arayüze dinamik olarak yansıt.
 - [ ] **Canlı Mesajlaşma:** `setInterval` kullanarak periyodik olarak yeni mesajları kontrol et ve arayüzü güncelle.
 - [ ] **Uçtan Uca Test:** Kayıt olma, giriş yapma, kullanıcı seçme ve mesajlaşma akışını baştan sona test et.
+
+---
+
+## Arayüz Durumu (2025-11-09)
+
+*   **Genel Yapı:** Sohbet uygulamasının temel arayüzü, `Studio(theme)` temasından `index.php`, `header.php`, `chat.php` ve `footer.php` dosyaları kullanılarak oluşturulmuştur. Arayüz modern ve görsel olarak tutarlıdır.
+*   **İçerik:** Tüm içerik (kullanıcı bilgileri, sohbet geçmişi, kişi listesi) şu anda statik HTML olarak kodlanmıştır.
+*   **Eksik Sayfalar:** `login.php` ve `register.php` sayfaları oluşturuldu ve `index.php` içinde bu sayfaları yönetecek bir yönlendirme (routing) mantığı eklendi.
+*   **Yapılacaklar:**
+    1.  Veritabanı ve API'ler tamamlandıktan sonra statik içerik dinamik verilerle değiştirilmeli.
