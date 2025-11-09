@@ -67,6 +67,7 @@ Kullanıcıların, arkadaşlık kodu sistemiyle birbirlerini ekleyerek özel ola
 *   Backend PHP yapısı tamamen yeniden düzenlendi. Tüm API mantığı `chat/pages/api_handler.php` dosyasına taşındı ve `index.php` merkezi bir yönlendirici olarak yapılandırıldı.
 *   `login.php`, `register.php`, `sidebar.php` ve `chat.php` gibi frontend PHP şablonları, dinamik veri entegrasyonu için hazırlandı ve statik içerikler yer tutucularla değiştirildi.
 *   `chat/api` klasörü silindi.
+*   `index.php` artık `/login`, `/register`, `/chat` gibi URL'lere gidildiğinde `pages` klasöründeki ilgili parçaları (header, footer, register.php vb.) birleştirerek tek bir ekran sunuyor.
 
 **Kalan Görevler (Frontend Odaklı):**
 1.  **Frontend AJAX Çağrılarını Güncelleme:** JavaScript dosyalarınızdaki (örneğin, `app.min.js`, `vendor.min.js` veya diğer özel JS dosyaları) tüm AJAX çağrılarını, eski `api/...` yolları yerine `index.php?action=login`, `index.php?action=register`, `index.php?action=get_contacts` vb. yeni merkezi uç noktalara işaret edecek şekilde manuel olarak güncelleyin.
@@ -75,3 +76,13 @@ Kullanıcıların, arkadaşlık kodu sistemiyle birbirlerini ekleyerek özel ola
 4.  **Uçtan Uca Test:** Kayıt olma, giriş yapma, kişi ekleme, mesajlaşma akışını baştan sona test edin.
 5.  **Gereksiz Kod Temizliği:** Kullanılmayan veya gereksiz kod satırlarını temizleyin.
 6.  **Pretty URL'ler:** `.htaccess` kullanarak daha okunabilir URL'ler oluşturun.
+
+---
+
+## GitHub Copilot İçin Prompt Önerisi
+
+Aşağıdaki prompt'u GitHub Copilot'a vererek, `chat/assets/js/custom.js` dosyasında AJAX çağrılarını güncelleme ve dinamik veri entegrasyonu konusunda yardım alabilirsiniz:
+
+```
+"Bu PHP tabanlı sohbet uygulamasında, tüm backend API çağrıları artık `index.php?action=...` formatında merkezi olarak işleniyor. `chat/assets/js/custom.js` dosyasında, kullanıcı girişini (login), kayıt olmayı (register), kişi listesini getirmeyi (get_contacts) ve mesaj göndermeyi (send_message) yöneten mevcut AJAX çağrılarını bul ve bunları yeni `index.php?action=...` formatına uygun şekilde güncelle. Ayrıca, `pages/sidebar.php` ve `pages/chat.php` içindeki statik yer tutucuları, bu güncellenmiş AJAX çağrılarından dönen dinamik verilerle dolduracak JavaScript kodunu ekle. Özellikle, sidebar'daki kullanıcı listesini ve chat alanındaki mesajları dinamik olarak yükle. Hata yönetimi ve yükleme durumları için basit mekanizmalar da ekle."
+```

@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat Application</title>
-    <!-- Debugging BASE_URL: <?php echo BASE_URL; ?> -->
     <link href="<?php echo BASE_URL; ?>assets/css/vendor.min.css" rel="stylesheet" />
     <link href="<?php echo BASE_URL; ?>assets/css/app.min.css" rel="stylesheet" />
     <link href="<?php echo BASE_URL; ?>assets/css/custom.css" rel="stylesheet" />

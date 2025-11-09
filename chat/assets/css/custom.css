@@ -4,3 +4,10 @@
 .app {
     padding-top: 0 !important;
 }
+
+.login {
+    background-image: url('../img/bg/wave-bg.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}

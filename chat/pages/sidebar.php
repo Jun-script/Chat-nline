@@ -3,6 +3,9 @@
                         <div class="position-relative w-100">
                             <img src="https://via.placeholder.com/40" alt="My Profile" class="rounded-pill me-2">
                             <span class="text-body fw-bold"><?php echo $_SESSION['username'] ?? 'My Name'; ?></span>
+                            <a href="index.php?action=logout" class="btn btn-sm btn-outline-secondary ms-auto" title="Logout">
+                                <i class="fas fa-sign-out-alt"></i>
+                            </a>
                         </div>
                     </div>
                     <div class="messenger-sidebar-body">

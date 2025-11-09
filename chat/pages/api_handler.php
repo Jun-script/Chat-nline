@@ -142,7 +142,9 @@ switch ($action) {
         // Finally, destroy the session.
         session_destroy();
 
-        $response = ['status' => 'success', 'message' => 'Logged out successfully.'];
+        // Redirect to login page after logout
+        header('Location: index.php?page=login');
+        exit;
         break;
 
     case 'add_contact':
