@@ -11,3 +11,92 @@
     background-position: center;
     background-repeat: no-repeat;
 }
+
+/* Sidebar Collapsed Styles */
+body.sidebar-collapsed .messenger-sidebar {
+    width: 80px; /* Adjust to desired collapsed width */
+}
+
+body.sidebar-collapsed .messenger-sidebar .messenger-sidebar-header .position-relative:nth-child(1) span,
+body.sidebar-collapsed .messenger-sidebar .messenger-sidebar-header .position-relative:nth-child(1) .ms-auto {
+    display: none; /* Hide username and logout button */
+}
+
+body.sidebar-collapsed .messenger-sidebar .messenger-sidebar-header .position-relative:nth-child(1) {
+    justify-content: center; /* Center the image and toggle button */
+}
+
+body.sidebar-collapsed .messenger-sidebar .messenger-sidebar-header #sidebarToggle {
+    margin-left: 0 !important; /* Remove margin from toggle button */
+}
+
+body.sidebar-collapsed .messenger-sidebar-search {
+    display: none; /* Hide the search bar when collapsed */
+}
+
+body.sidebar-collapsed .messenger-sidebar .messenger-info,
+body.sidebar-collapsed .messenger-sidebar .messenger-time-badge {
+    display: none; /* Hide contact name, last message, time, and badge */
+}
+
+body.sidebar-collapsed .messenger-sidebar .messenger-item .messenger-media {
+    margin: 0 auto; /* Center contact images */
+}
+
+body.sidebar-collapsed .messenger-sidebar .messenger-sidebar-footer {
+    display: none; /* Hide "My Contacts" button */
+}
+
+body.sidebar-collapsed .app-content {
+    margin-left: 80px !important; /* Adjust content area to collapsed sidebar width */
+}
+
+/* Ensure the toggle button is always visible and positioned correctly */
+body.sidebar-collapsed .messenger-sidebar-header #sidebarToggle {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+}
+
+.messenger-sidebar-header #sidebarToggle {
+    transition: all 0.2s ease-in-out;
+}
+
+/* My Contacts Button Styling */
+.messenger-sidebar-footer .btn-link {
+    padding: 10px 0;
+    text-decoration: none;
+    color: var(--bs-body-color); /* Use theme's body color */
+}
+
+.messenger-sidebar-footer .btn-link:hover {
+    color: var(--bs-theme); /* Use theme's primary color on hover */
+}
+
+/* Hide empty messenger badge */
+.messenger-badge.empty {
+    display: none;
+}
+
+/* Styling for message status icons */
+.message-status-icon-wrapper {
+    background-color: white; /* White background for the wrapper */
+    border: 1px solid #ccc; /* Or any color you prefer for the border */
+    border-radius: 3px; /* Optional: for slightly rounded corners */
+    padding: 2px 4px; /* Adjust padding as needed */
+    margin-left: 5px; /* Adjust spacing from the message text */
+    display: inline-block; /* To apply padding and border correctly */
+}
+
+/* For the "Read" icon (fa-circle-check) */
+.message-status-icon-wrapper .fa-circle-check {
+    color: white !important; /* White icon, !important to override text-success */
+    background-color: black; /* Black background for the icon itself */
+    border-radius: 50%; /* Make it circular if desired */
+    padding: 1px; /* Adjust padding for the circular background */
+}
+
+/* For the "Sent" and "Delivered" icons (fa-check) */
+.message-status-icon-wrapper .fa-check {
+    color: white !important; /* White icon, !important to override any default color */
+}

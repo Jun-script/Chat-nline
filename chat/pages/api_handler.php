@@ -27,7 +27,7 @@ switch ($action) {
             }
 
             try {
-                $stmt = $pdo->prepare("SELECT user_id, username, password, friendship_code FROM users WHERE email = ?");
+                $stmt = $pdo->prepare("SELECT user_id, username, password, friendship_code, profile_image FROM users WHERE email = ?");
                 $stmt->execute([$email]);
                 $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -35,6 +35,7 @@ switch ($action) {
                     $_SESSION['user_id'] = $user['user_id'];
                     $_SESSION['username'] = $user['username'];
                     $_SESSION['friendship_code'] = $user['friendship_code'];
+                    $_SESSION['profile_image'] = $user['profile_image'];
                     
                     // Update last_seen timestamp
                     $update_stmt = $pdo->prepare("UPDATE users SET last_seen = CURRENT_TIMESTAMP WHERE user_id = ?");
@@ -45,7 +46,8 @@ switch ($action) {
                     $response['user'] = [
                         'user_id' => $user['user_id'],
                         'username' => $user['username'],
-                        'friendship_code' => $user['friendship_code']
+                        'friendship_code' => $user['friendship_code'],
+                        'profile_image' => $user['profile_image']
                     ];
                 } else {
                     $response['message'] = 'Invalid email or password.';
@@ -226,22 +228,75 @@ switch ($action) {
 
         try {
             $stmt = $pdo->prepare("
-                SELECT 
+                SELECT DISTINCT
                     u.user_id, 
                     u.username, 
                     u.email,
-                    u.last_seen
-                FROM contacts c
-                JOIN users u ON c.friend_id = u.user_id
-                WHERE c.user_id = ?
-                ORDER BY u.username ASC
+                    u.last_seen,
+                    u.profile_image,
+                    (SELECT message FROM messages 
+                     WHERE (sender_id = u.user_id AND receiver_id = :current_user_id_1) 
+                        OR (sender_id = :current_user_id_2 AND receiver_id = u.user_id)
+                     ORDER BY created_at DESC LIMIT 1) AS last_message,
+                    (SELECT created_at FROM messages 
+                     WHERE (sender_id = u.user_id AND receiver_id = :current_user_id_3) 
+                        OR (sender_id = :current_user_id_4 AND receiver_id = u.user_id)
+                     ORDER BY created_at DESC LIMIT 1) AS last_message_time,
+                    (SELECT COUNT(*) FROM messages 
+                     WHERE sender_id = u.user_id AND receiver_id = :current_user_id_5 AND is_read = 0) AS unread_count
+                FROM users u
+                WHERE u.user_id IN (
+                    SELECT c.friend_id FROM contacts c WHERE c.user_id = :current_user_id_6
+                    UNION
+                    SELECT m.sender_id FROM messages m WHERE m.receiver_id = :current_user_id_7
+                    UNION
+                    SELECT m.receiver_id FROM messages m WHERE m.sender_id = :current_user_id_8
+                ) AND u.user_id != :current_user_id_9
+                ORDER BY last_message_time DESC, username ASC
             ");
-            $stmt->execute([$current_user_id]);
+            $stmt->execute([
+                'current_user_id_1' => $current_user_id,
+                'current_user_id_2' => $current_user_id,
+                'current_user_id_3' => $current_user_id,
+                'current_user_id_4' => $current_user_id,
+                'current_user_id_5' => $current_user_id,
+                'current_user_id_6' => $current_user_id,
+                'current_user_id_7' => $current_user_id,
+                'current_user_id_8' => $current_user_id,
+                'current_user_id_9' => $current_user_id
+            ]);
             $contacts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             $response['status'] = 'success';
             $response['message'] = 'Contacts retrieved successfully.';
             $response['contacts'] = $contacts;
+
+        } catch (PDOException $e) {
+            $response['message'] = 'Database error: ' . $e->getMessage();
+        }
+        break;
+
+    case 'get_all_contacts':
+        $current_user_id = $_SESSION['user_id'];
+
+        try {
+            $stmt = $pdo->prepare("
+                SELECT 
+                    user_id, 
+                    username, 
+                    email,
+                    last_seen,
+                    profile_image
+                FROM users
+                WHERE user_id != ?
+                ORDER BY username ASC
+            ");
+            $stmt->execute([$current_user_id]);
+            $all_users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $response['status'] = 'success';
+            $response['message'] = 'All users retrieved successfully.';
+            $response['contacts'] = $all_users;
 
         } catch (PDOException $e) {
             $response['message'] = 'Database error: ' . $e->getMessage();
@@ -260,7 +315,7 @@ switch ($action) {
 
         try {
             // Get friend's info
-            $stmt = $pdo->prepare("SELECT user_id, username, last_seen FROM users WHERE user_id = ?");
+            $stmt = $pdo->prepare("SELECT user_id, username, last_seen, profile_image FROM users WHERE user_id = ?");
             $stmt->execute([$friend_id]);
             $friend_info = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -277,7 +332,8 @@ switch ($action) {
                     sender_id, 
                     receiver_id, 
                     message, 
-                    is_read, 
+                    is_read,
+                    is_delivered, 
                     created_at
                 FROM messages
                 WHERE (sender_id = ? AND receiver_id = ?) 
@@ -311,7 +367,7 @@ switch ($action) {
             }
 
             try {
-                $stmt = $pdo->prepare("INSERT INTO messages (sender_id, receiver_id, message) VALUES (?, ?, ?)");
+                $stmt = $pdo->prepare("INSERT INTO messages (sender_id, receiver_id, message, is_delivered) VALUES (?, ?, ?, 1)");
                 if ($stmt->execute([$sender_id, $receiver_id, $message_text])) {
                     $last_insert_id = $pdo->lastInsertId();
                     $stmt = $pdo->prepare("SELECT * FROM messages WHERE message_id = ?");
@@ -321,11 +377,83 @@ switch ($action) {
                     $response['status'] = 'success';
                     $response['message'] = 'Message sent successfully.';
                     $response['new_message'] = $new_message;
+                    $response['current_user_id'] = $sender_id;
                 } else {
                     $response['message'] = 'Failed to send message.';
                 }
             } catch (PDOException $e) {
                 $response['message'] = 'Database error: ' . $e->getMessage();
+            }
+        } else {
+            $response['message'] = 'Invalid request method.';
+        }
+        break;
+
+    case 'mark_messages_as_read':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $current_user_id = $_SESSION['user_id'];
+            $sender_id = $_POST['sender_id'] ?? null;
+
+            if (empty($sender_id)) {
+                $response['message'] = 'Sender ID is required.';
+                echo json_encode($response);
+                exit;
+            }
+
+            try {
+                $stmt = $pdo->prepare("UPDATE messages SET is_read = 1 WHERE sender_id = ? AND receiver_id = ? AND is_read = 0");
+                $stmt->execute([$sender_id, $current_user_id]);
+
+                $response['status'] = 'success';
+                $response['message'] = 'Messages marked as read.';
+            } catch (PDOException $e) {
+                $response['message'] = 'Database error: ' . $e->getMessage();
+            }
+        } else {
+            $response['message'] = 'Invalid request method.';
+        }
+        break;
+
+    case 'upload_profile_picture':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $current_user_id = $_SESSION['user_id'];
+
+            if (!isset($_FILES['profile_picture']) || $_FILES['profile_picture']['error'] !== UPLOAD_ERR_OK) {
+                $response['message'] = 'No file uploaded or upload error.';
+                echo json_encode($response);
+                exit;
+            }
+
+            $file_tmp_path = $_FILES['profile_picture']['tmp_name'];
+            $file_extension = pathinfo($_FILES['profile_picture']['name'], PATHINFO_EXTENSION);
+            // Ensure the extension is 'jpg' as requested, or convert if necessary
+            // For simplicity, we'll assume the client sends a JPEG blob.
+            $target_dir = '../assets/img/user/'; // Relative to api_handler.php
+            $target_filename = $current_user_id . '.jpg';
+            $target_file_path = $target_dir . $target_filename;
+
+            // Create directory if it doesn't exist
+            if (!is_dir($target_dir)) {
+                mkdir($target_dir, 0777, true);
+            }
+
+            if (move_uploaded_file($file_tmp_path, $target_file_path)) {
+                try {
+                    $profile_picture_url = 'assets/img/user/' . $target_filename; // URL relative to chat/index.php
+                    $stmt = $pdo->prepare("UPDATE users SET profile_image = ? WHERE user_id = ?");
+                    $stmt->execute([$profile_picture_url, $current_user_id]);
+
+                    // Update the session variable
+                    $_SESSION['profile_image'] = $profile_picture_url;
+
+                    $response['status'] = 'success';
+                    $response['message'] = 'Profile picture uploaded and updated successfully.';
+                    $response['profile_picture_url'] = $profile_picture_url;
+                } catch (PDOException $e) {
+                    $response['message'] = 'Database error: ' . $e->getMessage();
+                }
+            } else {
+                $response['message'] = 'Failed to move uploaded file.';
             }
         } else {
             $response['message'] = 'Invalid request method.';
