@@ -4,8 +4,8 @@
                             <img src="https://via.placeholder.com/40" alt="Chat Contact" class="rounded-pill me-2">
                         </div>
                         <div class="messenger-content-header-info">
-                            Chat Contact Name
-                            <small>Online</small>
+                            <span id="chat-contact-name">Select a contact</span>
+                            <small id="chat-contact-status"></small>
                         </div>
                         <div class="messenger-content-header-btn">
                             <a href="#" class="btn btn-link"><i class="fa fa-phone"></i></a>
@@ -14,44 +14,17 @@
                     </div>
                     <div class="messenger-content-body">
                         <div data-scrollbar="true" data-height="100%">
-                            <div class="widget-chat">
-                                <div class="widget-chat-date">YESTERDAY</div>
-                                <div class="widget-chat-item">
-                                    <div class="widget-chat-media"><img src="https://via.placeholder.com/50" alt=""></div>
-                                    <div class="widget-chat-content">
-                                        <div class="widget-chat-name">Contact Name</div>
-                                        <div class="widget-chat-message last">
-                                            Hi there! How are you?
-                                        </div>
-                                        <div class="widget-chat-status">Yesterday 3:25PM</div>
-                                    </div>
-                                </div>
-                                <div class="widget-chat-item reply">
-                                    <div class="widget-chat-content">
-                                        <div class="widget-chat-message last">
-                                            I'm good, thanks! How about you?
-                                        </div>
-                                        <div class="widget-chat-status">2:22PM</div>
-                                    </div>
-                                </div>
-                                <div class="widget-chat-item">
-                                    <div class="widget-chat-media"><img src="https://via.placeholder.com/50" alt=""></div>
-                                    <div class="widget-chat-content">
-                                        <div class="widget-chat-name">Contact Name</div>
-                                        <div class="widget-chat-message last">
-                                            I'm doing great! Just working on a project.
-                                        </div>
-                                        <div class="widget-chat-status">2:25PM</div>
-                                    </div>
-                                </div>
+                            <div class="widget-chat" id="chat-messages">
+                                <!-- Dynamic messages will be loaded here by JavaScript -->
+                                <div class="text-center p-3 text-muted" id="no-messages-placeholder">No messages yet.</div>
                             </div>
                         </div>
                     </div>
                     <div class="messenger-content-footer">
                         <div class="input-group position-relative">
                             <button class="btn border-0 position-absolute top-0 bottom-0 start-0 z-2 text-body" id="trigger"><i class="far fa-face-smile"></i></button>
-                            <input type="text" class="form-control rounded-start ps-45px z-1" id="input" placeholder="Write a message...">
-                            <button class="btn btn-theme fs-13px fw-semibold" type="button">Send <i class="fa fa-paper-plane"></i></button>
+                            <input type="text" class="form-control rounded-start ps-45px z-1" id="message-input" name="message" placeholder="Write a message...">
+                            <button class="btn btn-theme fs-13px fw-semibold" type="button" id="send-message-btn">Send <i class="fa fa-paper-plane"></i></button>
                         </div>
                     </div>
                 </div>

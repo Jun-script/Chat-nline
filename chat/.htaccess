@@ -1,0 +1,18 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /chat/
+
+    # Rewrite /login to index.php?page=login
+    RewriteRule ^login/?$ index.php?page=login [L,QSA]
+
+    # Rewrite /register to index.php?page=register
+    RewriteRule ^register/?$ index.php?page=register [L,QSA]
+
+    # Rewrite /chat to index.php?page=chat
+    RewriteRule ^chat/?$ index.php?page=chat [L,QSA]
+
+    # If the request is not a real file or directory, route it through index.php
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ index.php [L,QSA]
+</IfModule>

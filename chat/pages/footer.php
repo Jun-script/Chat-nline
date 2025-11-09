@@ -6,6 +6,7 @@
 
     <script src="assets/js/vendor.min.js"></script>
     <script src="assets/js/app.min.js"></script>
+    <script src="assets/js/custom.js"></script>
     <script src="assets/js/demo/page-messenger.demo.js"></script>
 </body>
 </html>

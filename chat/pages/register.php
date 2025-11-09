@@ -1,38 +1,25 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register</title>
-    <link href="../assets/css/vendor.min.css" rel="stylesheet" />
-    <link href="../assets/css/app.min.css" rel="stylesheet" />
-    <link href="../assets/css/custom.css" rel="stylesheet" />
-</head>
-<body>
-	<!-- BEGIN #app -->
-	<div id="app" class="app app-full-height app-without-header">
 		<!-- BEGIN register -->
 		<div class="register">
 			<!-- BEGIN register-content -->
 			<div class="register-content">
-				<form action="index.php" method="POST" name="register_form">
+				<form method="POST" name="register_form">
 					<h1 class="text-center">Sign Up</h1>
 					<p class="text-muted text-center">One Admin ID is all you need to access all the Admin services.</p>
 					<div class="mb-3">
 						<label class="form-label">Name <span class="text-danger">*</span></label>
-						<input type="text" class="form-control form-control-lg fs-15px" placeholder="e.g John Smith" value="">
+						<input type="text" class="form-control form-control-lg fs-15px" name="username" placeholder="e.g John Smith" value="">
 					</div>
 					<div class="mb-3">
 						<label class="form-label">Email Address <span class="text-danger">*</span></label>
-						<input type="text" class="form-control form-control-lg fs-15px" placeholder="username@address.com" value="">
+						<input type="text" class="form-control form-control-lg fs-15px" name="email" placeholder="username@address.com" value="">
 					</div>
 					<div class="mb-3">
 						<label class="form-label">Password <span class="text-danger">*</span></label>
-						<input type="password" class="form-control form-control-lg fs-15px" value="">
+						<input type="password" class="form-control form-control-lg fs-15px" name="password" value="">
 					</div>
 					<div class="mb-3">
 						<label class="form-label">Confirm Password <span class="text-danger">*</span></label>
-						<input type="password" class="form-control form-control-lg fs-15px" value="">
+						<input type="password" class="form-control form-control-lg fs-15px" name="confirm_password" value="">
 					</div>
 					<div class="mb-3">
 						<label class="form-label">Country <span class="text-danger">*</span></label>
@@ -83,9 +70,3 @@
 			<!-- END register-content -->
 		</div>
 		<!-- END register -->
-	</div>
-	<!-- END #app -->
-    <script src="../assets/js/vendor.min.js"></script>
-    <script src="../assets/js/app.min.js"></script>
-</body>
-</html>
