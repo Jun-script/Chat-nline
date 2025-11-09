@@ -1,0 +1,49 @@
+@@include('./partial/head.html', {
+	"title": "Mixed Menu", 
+	"bodyAttr": "class='pace-top'",
+	"css": [
+]})
+	<!-- BEGIN #app -->
+	<div id="app" class="app app-with-top-nav">
+		@@include('./partial/header.html')
+		
+		@@include('./partial/sidebar.html', {"layoutClass": "active", "mixedNavClass": "active"})
+		
+		@@include('./partial/top-nav.html', {"layoutClass": "active", "mixedNavClass": "active"})
+		
+		<!-- BEGIN #content -->
+		<div id="content" class="app-content">
+			<ul class="breadcrumb">
+				<li class="breadcrumb-item"><a href="#">LAYOUT</a></li>
+				<li class="breadcrumb-item active">MIXED NAV</li>
+			</ul>
+			
+			<h1 class="page-header">
+				Mixed Nav <small>page header description goes here...</small>
+			</h1>
+			
+			<hr class="mb-4">
+			
+			<p>
+				Add the <code>.app-with-top-nav</code> css class to <code>.app</code> container for mixed nav page setting. 
+				Please reminded that if you wish to have both mobile toggler for sidebar and top nav, you might need to adjust 
+				the mobile toggler in order to fit into the mobile design.
+			</p>
+			
+			<div class="card">
+				<div class="hljs-container rounded">
+					<pre><code class="xml" data-url="assets/data/layout-mixed-nav/code-1.json"></code></pre>
+				</div>
+			</div>
+		</div>
+		<!-- END #content -->
+		
+		@@include('./partial/theme-panel.html')
+		@@include('./partial/scroll-top-btn.html')
+	</div>
+	<!-- END #app -->
+	
+@@include('./partial/script.html', {"script": [
+	"assets/plugins/@highlightjs/cdn-assets/highlight.min.js",
+	"assets/js/demo/highlightjs.demo.js"
+]})

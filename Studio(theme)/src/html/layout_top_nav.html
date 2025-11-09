@@ -1,0 +1,46 @@
+@@include('./partial/head.html', {
+	"title": "Top Nav", 
+	"bodyAttr": "class='pace-top'",
+	"css": [
+]})
+	<!-- BEGIN #app -->
+	<div id="app" class="app app-with-top-nav app-without-sidebar">
+		@@include('./partial/header.html', {"appSidebarHide": true, "appTopNav": true})
+		
+		@@include('./partial/top-nav.html', {"layoutClass": "active", "topNavClass": "active"})
+		
+		<!-- BEGIN #content -->
+		<div id="content" class="app-content">
+			<ul class="breadcrumb">
+				<li class="breadcrumb-item"><a href="#">LAYOUT</a></li>
+				<li class="breadcrumb-item active">TOP NAV</li>
+			</ul>
+			
+			<h1 class="page-header">
+				Top Nav <small>page header description goes here...</small>
+			</h1>
+			
+			<hr class="mb-4">
+			
+			<p>
+				Add the <code>.app-with-top-nav</code>, <code>.app-without-sidebar</code> css class to <code>.app</code> container for top nav page setting. 
+				You might need to add the mobile toggler for top nav as well.
+			</p>
+			
+			<div class="card">
+				<div class="hljs-container rounded">
+					<pre><code class="xml" data-url="assets/data/layout-top-nav/code-1.json"></code></pre>
+				</div>
+			</div>
+		</div>
+		<!-- END #content -->
+		
+		@@include('./partial/theme-panel.html')
+		@@include('./partial/scroll-top-btn.html')
+	</div>
+	<!-- END #app -->
+	
+@@include('./partial/script.html', {"script": [
+	"assets/plugins/@highlightjs/cdn-assets/highlight.min.js",
+	"assets/js/demo/highlightjs.demo.js"
+]})
