@@ -1,7 +1,7 @@
                 <div class="messenger-content">
                     <div class="messenger-content-header">
                         <div class="messenger-content-header-media">
-                            <img src="https://via.placeholder.com/40" alt="Chat Contact" class="rounded-pill me-2">
+                            <img id="chat-contact-img" src="https://via.placeholder.com/40" alt="Chat Contact" class="rounded-pill me-2">
                         </div>
                         <div class="messenger-content-header-info">
                             <span id="chat-contact-name">Select a contact</span>
@@ -28,3 +28,25 @@
                         </div>
                     </div>
                 </div>
+
+<!-- Profile Picture Upload Modal -->
+<div class="modal fade" id="profilePictureModal" tabindex="-1" aria-labelledby="profilePictureModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="profilePictureModalLabel">Upload Profile Picture</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <input type="file" id="profileImageInput" accept="image/*" class="form-control mb-3">
+        <div class="img-container">
+          <img id="imageToCrop" src="" alt="Picture to crop" style="max-width: 100%;">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="uploadCroppedImage">Upload</button>
+      </div>
+    </div>
+  </div>
+</div>

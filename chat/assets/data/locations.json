@@ -1,0 +1,47 @@
+{
+  "Turkey": [
+    "Adana","Adıyaman","Afyonkarahisar","Ağrı","Amasya","Ankara","Antalya","Artvin","Aydın",
+    "Balıkesir","Bilecik","Bingöl","Bitlis","Bolu","Burdur","Bursa","Çanakkale","Çankırı","Çorum",
+    "Denizli","Diyarbakır","Edirne","Elazığ","Erzincan","Erzurum","Eskişehir","Gaziantep","Giresun",
+    "Gümüşhane","Hakkari","Hatay","Isparta","Mersin","İstanbul","İzmir","Kars","Kastamonu","Kayseri",
+    "Kırklareli","Kırşehir","Kocaeli","Konya","Kütahya","Malatya","Manisa","Kahramanmaraş","Mardin",
+    "Muğla","Muş","Nevşehir","Niğde","Ordu","Rize","Sakarya","Samsun","Siirt","Sinop","Sivas",
+    "Tekirdağ","Tokat","Trabzon","Tunceli","Şanlıurfa","Uşak","Van","Yozgat","Zonguldak","Aksaray",
+    "Bayburt","Karaman","Kırıkkale","Batman","Şırnak","Bartın","Ardahan","Iğdır","Yalova","Karabük",
+    "Kilis","Osmaniye","Düzce"
+  ],
+  "United States": [
+    "New York","Los Angeles","Chicago","Houston","Phoenix","Philadelphia","San Antonio","San Diego",
+    "Dallas","San Jose","Austin","Jacksonville","Fort Worth","Columbus","Charlotte","San Francisco",
+    "Indianapolis","Seattle","Denver","Washington","Boston","El Paso","Nashville","Detroit",
+    "Oklahoma City","Portland","Las Vegas","Memphis","Louisville","Baltimore","Milwaukee",
+    "Albuquerque","Tucson","Fresno","Sacramento","Kansas City","Mesa","Atlanta","Omaha",
+    "Colorado Springs","Raleigh","Long Beach","Virginia Beach","Miami","Oakland","Minneapolis",
+    "Tulsa","Bakersfield","Wichita","Arlington"
+  ],
+  "United Kingdom": [
+    "London","Birmingham","Glasgow","Liverpool","Leeds","Sheffield","Edinburgh","Bristol","Manchester",
+    "Leicester","Coventry","Hull","Bradford","Cardiff","Belfast","Stoke-on-Trent","Wolverhampton",
+    "Nottingham","Plymouth","Southampton","Reading","Derby","Swansea","Sunderland","Bournemouth",
+    "Oxford","Cambridge","Milton Keynes","Aberdeen","Inverness","Norwich","Exeter","Brighton",
+    "Gloucester","Newport","Luton","Blackpool"
+  ],
+  "Germany": [
+    "Berlin","Hamburg","Munich","Cologne","Frankfurt","Stuttgart","Düsseldorf","Dortmund","Essen",
+    "Leipzig","Bremen","Dresden","Hanover","Nuremberg","Duisburg","Bochum","Wuppertal","Bielefeld",
+    "Bonn","Münster","Karlsruhe","Mannheim","Augsburg","Wiesbaden","Gelsenkirchen","Mönchengladbach",
+    "Braunschweig","Chemnitz","Kiel","Aachen","Halle","Magdeburg","Freiburg","Krefeld","Lübeck",
+    "Oberhausen","Erfurt"
+  ],
+  "France": [
+    "Paris","Marseille","Lyon","Toulouse","Nice","Nantes","Strasbourg","Montpellier","Bordeaux",
+    "Lille","Rennes","Reims","Le Havre","Saint-Étienne","Toulon","Grenoble","Dijon","Angers",
+    "Nîmes","Villeurbanne","Clermont-Ferrand","Le Mans","Aix-en-Provence","Brest","Limoges"
+  ],
+  "Spain": [
+    "Madrid","Barcelona","Valencia","Seville","Zaragoza","Málaga","Murcia","Palma","Las Palmas",
+    "Bilbao","Alicante","Córdoba","Valladolid","Vigo","Gijón","L'Hospitalet de Llobregat",
+    "A Coruña","Vitoria-Gasteiz","Granada","Elche","Oviedo","Badalona","Cartagena","Terrassa",
+    "Jerez de la Frontera","Sabadell"
+  ]
+}

@@ -2,16 +2,37 @@
 // api_handler.php
 // This file handles all API requests. It is included by index.php when $_GET['action'] is set.
 
+// Ensure session is started early
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+}
+
+// Ensure database handle $pdo is available (include config if needed)
+if (!isset($pdo)) {
+    $configPath = __DIR__ . '/../config.php';
+    if (file_exists($configPath)) {
+        require_once $configPath;
+    } else {
+        // fallback error response for dev
+        header('Content-Type: application/json');
+        echo json_encode(['status' => 'error', 'message' => 'Database configuration not found.']);
+        exit;
+    }
+}
+
+// set JSON header after session/config
 header('Content-Type: application/json');
+
+// use a single $action variable (avoid direct access to $_GET['action'])
+$action = $_GET['action'] ?? '';
 
 // Ensure user is logged in for most API actions, except login and register
 $public_actions = ['login', 'register'];
-if (!isset($_SESSION['user_id']) && !in_array($_GET['action'], $public_actions)) {
+if (!isset($_SESSION['user_id']) && !in_array($action, $public_actions, true)) {
     echo json_encode(['status' => 'error', 'message' => 'User not logged in.']);
     exit;
 }
 
-$action = $_GET['action'] ?? '';
 $response = ['status' => 'error', 'message' => 'An unknown error occurred.'];
 
 switch ($action) {
@@ -65,6 +86,9 @@ switch ($action) {
             $username = trim($_POST['username'] ?? '');
             $email = trim($_POST['email'] ?? '');
             $password = $_POST['password'] ?? '';
+            $country = trim($_POST['country'] ?? null);
+            $gender = trim($_POST['gender'] ?? null);
+            $dob = trim($_POST['dob'] ?? null); // expect YYYY-MM-DD or validate
 
             if (empty($username) || empty($email) || empty($password)) {
                 $response['message'] = 'All fields are required.';
@@ -94,27 +118,12 @@ switch ($action) {
             }
 
             $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-
-            // Generate a unique friendship code
-            $friendship_code = bin2hex(random_bytes(8)); // 16 character hex string
-            while (true) {
-                try {
-                    $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE friendship_code = ?");
-                    $stmt->execute([$friendship_code]);
-                    if ($stmt->fetchColumn() === 0) {
-                        break; // Code is unique
-                    }
-                } catch (PDOException $e) {
-                    $response['message'] = 'Database error during friendship code generation: ' . $e->getMessage();
-                    echo json_encode($response);
-                    exit;
-                }
-                $friendship_code = bin2hex(random_bytes(8)); // Generate new code if not unique
-            }
+            $friendship_code = bin2hex(random_bytes(8));
 
             try {
-                $stmt = $pdo->prepare("INSERT INTO users (username, email, password, friendship_code) VALUES (?, ?, ?, ?)");
-                if ($stmt->execute([$username, $email, $hashed_password, $friendship_code])) {
+                $stmt = $pdo->prepare("INSERT INTO users (username, email, password, friendship_code, profile_image, country, gender, dob) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+                $default_profile = 'assets/img/user/default.jpg';
+                if ($stmt->execute([$username, $email, $hashed_password, $friendship_code, $default_profile, $country, $gender, $dob])) {
                     $response['status'] = 'success';
                     $response['message'] = 'Registration successful!';
                 } else {
@@ -415,48 +424,195 @@ switch ($action) {
         break;
 
     case 'upload_profile_picture':
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $current_user_id = $_SESSION['user_id'];
+        // DEBUG: geçici olarak hataları göster (dev ortamında)
+        ini_set('display_errors', 1);
+        ini_set('display_startup_errors', 1);
+        error_reporting(E_ALL);
 
-            if (!isset($_FILES['profile_picture']) || $_FILES['profile_picture']['error'] !== UPLOAD_ERR_OK) {
-                $response['message'] = 'No file uploaded or upload error.';
-                echo json_encode($response);
+        header('Content-Type: application/json; charset=utf-8');
+        try {
+            if (session_status() !== PHP_SESSION_ACTIVE) session_start();
+            if (!isset($_SESSION['user_id'])) throw new Exception('Unauthorized');
+
+            if (empty($_FILES['profile_picture']) || !is_uploaded_file($_FILES['profile_picture']['tmp_name'])) {
+                throw new Exception('No file uploaded');
+            }
+
+            $file = $_FILES['profile_picture'];
+            $tmp = $file['tmp_name'];
+
+            // Validate image (finfo if available, otherwise getimagesize)
+            $isImage = false;
+            if (function_exists('finfo_open')) {
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $mime = finfo_file($finfo, $tmp);
+                finfo_close($finfo);
+                if (strpos($mime, 'image/') === 0) $isImage = true;
+            }
+            if (!$isImage) {
+                $info = @getimagesize($tmp);
+                if ($info !== false && isset($info['mime']) && strpos($info['mime'], 'image/') === 0) {
+                    $isImage = true;
+                }
+            }
+            if (!$isImage) throw new Exception('Uploaded file is not a valid image');
+
+            $user_id = (int) $_SESSION['user_id'];
+            $upload_dir = __DIR__ . '/../assets/img/user/';
+            if (!is_dir($upload_dir) && !mkdir($upload_dir, 0755, true)) {
+                throw new Exception('Failed to create upload directory');
+            }
+            if (!is_writable($upload_dir)) {
+                // attempt to set writable for dev
+                @chmod($upload_dir, 0755);
+                if (!is_writable($upload_dir)) throw new Exception('Upload directory not writable: ' . $upload_dir);
+            }
+
+            $filename = $user_id . '.jpg';
+            $target = $upload_dir . $filename;
+
+            // Option: convert to jpeg to ensure consistent extension
+            $imgData = file_get_contents($tmp);
+            $img = @imagecreatefromstring($imgData);
+            if ($img === false) {
+                // fallback to moving original file
+                if (!move_uploaded_file($tmp, $target)) throw new Exception('Failed to move uploaded file');
+            } else {
+                // save as JPEG
+                if (!imagejpeg($img, $target, 90)) throw new Exception('Failed to save JPEG image');
+                imagedestroy($img);
+            }
+
+            @chmod($target, 0644);
+            $profile_url = 'assets/img/user/' . $filename;
+
+            // DB update (use $pdo and correct column name)
+            if (!isset($pdo)) throw new Exception('Database handle $pdo not available');
+            $stmt = $pdo->prepare("UPDATE users SET profile_image = ? WHERE user_id = ?");
+            if (!$stmt->execute([$profile_url, $user_id])) {
+                throw new Exception('Database update failed');
+            }
+
+            $_SESSION['profile_image'] = $profile_url;
+
+            echo json_encode([
+                'status' => 'success',
+                'message' => 'Profile picture uploaded and updated successfully.',
+                'profile_picture_url' => $profile_url,
+                'user_id' => $user_id
+            ]);
+        } catch (Exception $e) {
+            error_log('upload_profile_picture error: ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+        exit;
+        break;
+
+    case 'get_profile':
+        if (!isset($_SESSION['user_id'])) {
+            $response['message'] = 'Not logged in';
+            echo json_encode($response);
+            exit;
+        }
+
+        try {
+            $stmt = $pdo->prepare("SELECT username, email, country, gender, dob, created_at, profile_image, friendship_code FROM users WHERE user_id = ?");
+            $stmt->execute([$_SESSION['user_id']]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($user) {
+                $response['status'] = 'success';
+                $response['user'] = $user;
+            } else {
+                $response['message'] = 'User not found';
+            }
+        } catch (PDOException $e) {
+            $response['message'] = 'Database error: ' . $e->getMessage();
+        }
+        
+        echo json_encode($response);
+        exit;
+        break;
+
+    case 'update_profile':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            if (session_status() !== PHP_SESSION_ACTIVE) session_start();
+            $current_user_id = $_SESSION['user_id'] ?? null;
+            if (!$current_user_id) {
+                echo json_encode(['status'=>'error','message'=>'Not authenticated']);
                 exit;
             }
 
-            $file_tmp_path = $_FILES['profile_picture']['tmp_name'];
-            $file_extension = pathinfo($_FILES['profile_picture']['name'], PATHINFO_EXTENSION);
-            // Ensure the extension is 'jpg' as requested, or convert if necessary
-            // For simplicity, we'll assume the client sends a JPEG blob.
-            $target_dir = '../assets/img/user/'; // Relative to api_handler.php
-            $target_filename = $current_user_id . '.jpg';
-            $target_file_path = $target_dir . $target_filename;
+            $username = trim($_POST['username'] ?? '');
+            $country = trim($_POST['country'] ?? null);
+            $gender = trim($_POST['gender'] ?? null);
+            $dob = trim($_POST['dob'] ?? null);
+            $current_password = $_POST['current_password'] ?? '';
+            $new_password = $_POST['new_password'] ?? '';
+            $confirm_password = $_POST['confirm_password'] ?? '';
 
-            // Create directory if it doesn't exist
-            if (!is_dir($target_dir)) {
-                mkdir($target_dir, 0777, true);
+            if (empty($username)) {
+                echo json_encode(['status'=>'error','message'=>'Username is required']);
+                exit;
             }
 
-            if (move_uploaded_file($file_tmp_path, $target_file_path)) {
-                try {
-                    $profile_picture_url = 'assets/img/user/' . $target_filename; // URL relative to chat/index.php
-                    $stmt = $pdo->prepare("UPDATE users SET profile_image = ? WHERE user_id = ?");
-                    $stmt->execute([$profile_picture_url, $current_user_id]);
-
-                    // Update the session variable
-                    $_SESSION['profile_image'] = $profile_picture_url;
-
-                    $response['status'] = 'success';
-                    $response['message'] = 'Profile picture uploaded and updated successfully.';
-                    $response['profile_picture_url'] = $profile_picture_url;
-                } catch (PDOException $e) {
-                    $response['message'] = 'Database error: ' . $e->getMessage();
+            try {
+                // Check username uniqueness
+                $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE username = ? AND user_id != ?");
+                $stmt->execute([$username, $current_user_id]);
+                if ($stmt->fetchColumn() > 0) {
+                    echo json_encode(['status'=>'error','message'=>'Username already taken']);
+                    exit;
                 }
-            } else {
-                $response['message'] = 'Failed to move uploaded file.';
+
+                $pdo->beginTransaction();
+
+                // If changing password, validate
+                if (!empty($new_password)) {
+                    if ($new_password !== $confirm_password) {
+                        echo json_encode(['status'=>'error','message'=>'New passwords do not match']);
+                        $pdo->rollBack();
+                        exit;
+                    }
+                    // verify current password
+                    $stmt = $pdo->prepare("SELECT password FROM users WHERE user_id = ?");
+                    $stmt->execute([$current_user_id]);
+                    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+                    if (!$row || !password_verify($current_password, $row['password'])) {
+                        echo json_encode(['status'=>'error','message'=>'Current password is incorrect']);
+                        $pdo->rollBack();
+                        exit;
+                    }
+                    $hashed = password_hash($new_password, PASSWORD_DEFAULT);
+                    $stmt = $pdo->prepare("UPDATE users SET password = ? WHERE user_id = ?");
+                    $stmt->execute([$hashed, $current_user_id]);
+                }
+
+                // Update other fields
+                $stmt = $pdo->prepare("UPDATE users SET username = ?, country = ?, gender = ?, dob = ? WHERE user_id = ?");
+                $stmt->execute([$username, $country, $gender, $dob ?: null, $current_user_id]);
+
+                $pdo->commit();
+
+                // Refresh session username
+                $_SESSION['username'] = $username;
+
+                // Return updated profile
+                $stmt = $pdo->prepare("SELECT user_id, username, email, country, gender, dob, profile_image FROM users WHERE user_id = ?");
+                $stmt->execute([$current_user_id]);
+                $updated = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                echo json_encode(['status'=>'success','message'=>'Profile updated','user'=>$updated]);
+
+            } catch (PDOException $e) {
+                if ($pdo->inTransaction()) $pdo->rollBack();
+                echo json_encode(['status'=>'error','message'=>'Database error: '.$e->getMessage()]);
             }
+            exit;
         } else {
-            $response['message'] = 'Invalid request method.';
+            echo json_encode(['status'=>'error','message'=>'Invalid request method']);
+            exit;
         }
         break;
 

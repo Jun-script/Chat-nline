@@ -1,8 +1,8 @@
 		<!-- BEGIN register -->
 		<div class="register">
 			<!-- BEGIN register-content -->
-			<div class="register-content">
-				<form method="POST" name="register_form">
+			<div class="register-content card">
+				<form method="POST" name="register_form" class="card-body">
 					<h1 class="text-center">Sign Up</h1>
 					<p class="text-muted text-center">One Admin ID is all you need to access all the Admin services.</p>
 					<div class="mb-3">

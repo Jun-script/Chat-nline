@@ -7,6 +7,7 @@
     <link href="<?php echo BASE_URL; ?>assets/css/vendor.min.css" rel="stylesheet" />
     <link href="<?php echo BASE_URL; ?>assets/css/app.min.css" rel="stylesheet" />
     <link href="<?php echo BASE_URL; ?>assets/css/custom.css" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css" rel="stylesheet">
 </head>
 <body>
     <!-- BEGIN #app -->

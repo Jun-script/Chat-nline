@@ -3,7 +3,14 @@
 
 $(document).ready(function() {
     // Base URL for AJAX calls
-    const BASE_URL = ''; // This should be dynamically set if needed, or handled by relative paths
+    const BASE_URL = ''; 
+    let currentChatFriendId = null;
+    let pollingInterval = null;
+    let contactPollingInterval = null;
+    let cropper = null;
+    // replace occurrences like 'https://via.placeholder.com/50' / 'https://via.placeholder.com/40'
+    // with local default path:
+    const LOCAL_PLACEHOLDER = 'assets/img/user/default.jpg';
 
     // --- Login Form Submission ---
     $('form[name="login_form"]').on('submit', function(e) {
@@ -87,10 +94,6 @@ $(document).ready(function() {
     });
 
     // --- Dynamic Contact Loading ---
-    let currentChatFriendId = null;
-    let pollingInterval = null;
-    let contactPollingInterval = null;
-
     // Helper function to format time
     function formatTime(timestamp) {
         if (!timestamp) return '';
@@ -138,7 +141,7 @@ $(document).ready(function() {
                                 <div class="messenger-item">
                                     <a href="#" class="messenger-link" data-user-id="${contact.user_id}">
                                         <div class="messenger-media">
-                                            <img alt="" src="${contact.profile_image || 'https://via.placeholder.com/50'}" class="mw-100 mh-100 rounded-pill">
+                                            <img alt="" src="${contact.profile_image || LOCAL_PLACEHOLDER}" class="mw-100 mh-100 rounded-pill">
                                         </div>
                                         <div class="messenger-info">
                                             <div class="messenger-name">${contact.username}</div>
@@ -180,6 +183,7 @@ $(document).ready(function() {
                     $('#no-messages-placeholder').remove(); // Remove placeholder if messages exist
 
                     $('#chat-contact-name').text(response.friend_info.username);
+                    $('#chat-contact-img').attr('src', response.friend_info.profile_image || LOCAL_PLACEHOLDER);
                     // Update status based on last_seen (simplified for now)
                     $('#chat-contact-status').text('Last seen: ' + response.friend_info.last_seen);
 
@@ -202,12 +206,12 @@ $(document).ready(function() {
 
                             const messageHtml = `
                                 <div class="widget-chat-item ${messageClass}">
-                                    ${!isSender ? '<div class="widget-chat-media"><img src="https://via.placeholder.com/50" alt=""></div>' : ''}
+                                    ${!isSender ? `<div class="widget-chat-media"><img src="${response.friend_info.profile_image || LOCAL_PLACEHOLDER}" alt=""></div>` : ''}
                                     <div class="widget-chat-content">
                                         ${!isSender ? `<div class="widget-chat-name">${response.friend_info.username}</div>` : ''}
                                         <div class="widget-chat-message last">
                                             ${message.message}
-                                            <span class="message-status-icon-wrapper">${statusIcon}</span>
+                                            ${statusIcon}
                                         </div>
                                         <div class="message-timestamp-hover" style="display: none;">
                                             ${message.created_at}
@@ -283,7 +287,7 @@ $(document).ready(function() {
                 <div class="widget-chat-content">
                     <div class="widget-chat-message last">
                         ${messageText}
-                        <span class="message-status-icon-wrapper"><i class="fa fa-clock"></i></span>
+                        <i class="fa fa-clock"></i>
                     </div>
                     <div class="message-timestamp-hover" style="display: none;">
                         ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
@@ -338,7 +342,11 @@ $(document).ready(function() {
                     // Find the pending message and update its status and timestamp
                     const $pendingMessage = $(`[data-temp-id="${tempMessageId}"]`);
                     if ($pendingMessage.length) {
-                        $pendingMessage.find('.message-status-icon-wrapper').html(statusIcon);
+                        // Extract the class from the statusIcon string and apply it directly to the <i> element
+                        const iconClassMatch = statusIcon.match(/class="([^"]*)"/);
+                        if (iconClassMatch && iconClassMatch[1]) {
+                            $pendingMessage.find('.widget-chat-message i').attr('class', iconClassMatch[1]);
+                        }
                         $pendingMessage.find('.message-timestamp-hover').html(new_message.created_at);
                     }
                     
@@ -437,7 +445,7 @@ $(document).ready(function() {
                                 <div class="messenger-item">
                                     <a href="#" class="messenger-link" data-user-id="${contact.user_id}">
                                         <div class="messenger-media">
-                                            <img alt="" src="${contact.profile_image || 'https://via.placeholder.com/50'}" class="mw-100 mh-100 rounded-pill">
+                                            <img alt="" src="${contact.profile_image || LOCAL_PLACEHOLDER}" class="mw-100 mh-100 rounded-pill">
                                         </div>
                                         <div class="messenger-info">
                                             <div class="messenger-name">${contact.username}</div>
@@ -461,6 +469,17 @@ $(document).ready(function() {
     // Trigger loading all contacts when the modal is shown
     $('#contactsModal').on('show.bs.modal', function () {
         loadAllContacts();
+        
+        // Load friendship code
+        $.ajax({
+            url: 'index.php?action=get_profile',
+            type: 'GET',
+            dataType: 'json'
+        }).done(function(res) {
+            if (res && res.status === 'success' && res.user) {
+                $('#your-friendship-code').val(res.user.friendship_code || '');
+            }
+        });
     });
 
     // --- Contacts Modal Search Functionality ---
@@ -477,7 +496,7 @@ $(document).ready(function() {
     });
 
     // --- Chat List Search Functionality ---
-    $('.messenger-sidebar-header input[type="text"]').on('keyup', function() {
+    $('.messenger-sidebar-search input[type="text"]').on('keyup', function() {
         const searchTerm = $(this).val().toLowerCase();
         $('#contact-list .messenger-item').each(function() {
             const contactName = $(this).find('.messenger-name').text().toLowerCase();
@@ -489,94 +508,426 @@ $(document).ready(function() {
         });
     });
 
+    // --- Profile picture upload & crop ---
+    (function() {
+        // ensure single cropper variable in the file scope (already defined above)
+        // click avatar -> open file selector
+        $(document).on('click', '#user-profile-img', function() {
+            $('#profile-picture-upload').click();
+        });
+
+        // when user selects file
+        $(document).on('change', '#profile-picture-upload', function(e) {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+
+            if (!file.type || !file.type.startsWith('image/')) {
+                alert('Lütfen bir resim dosyası seçin.');
+                $(this).val('');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                // cleanup any previous cropper
+                if (cropper) {
+                    try { cropper.destroy(); } catch (err) {}
+                    cropper = null;
+                }
+
+                const img = document.getElementById('imageToCrop');
+                if (!img) {
+                    alert('Crop image element not found.');
+                    return;
+                }
+
+                img.src = ev.target.result;
+
+                // show modal then initialize cropper once when modal fully shown
+                $('#profilePictureModal').off('shown.bs.modal'); // remove previous handlers
+                $('#profilePictureModal').one('shown.bs.modal', function() {
+                    // safe initialize
+                    try {
+                        cropper = new Cropper(img, {
+                            aspectRatio: 1,
+                            viewMode: 2,
+                            autoCropArea: 0.9,
+                            responsive: true,
+                            background: false,
+                            movable: true,
+                            zoomable: true,
+                            rotatable: false,
+                            scalable: false
+                        });
+                    } catch (err) {
+                        console.error('Cropper init error:', err);
+                        alert('Kırpma başlatılamadı.');
+                    }
+                });
+
+                $('#profilePictureModal').modal('show');
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // modal hidden -> cleanup
+        $('#profilePictureModal').on('hidden.bs.modal', function() {
+            if (cropper) {
+                try { cropper.destroy(); } catch (err) {}
+                cropper = null;
+            }
+            $('#profile-picture-upload').val('');
+            $('#imageToCrop').attr('src', '');
+        });
+
+        // upload cropped image
+        $(document).on('click', '#uploadCroppedImage', function() {
+            if (!cropper) {
+                console.error('No cropper instance when trying to upload');
+                alert('Resim seçilmedi veya kırpma hatası.');
+                return;
+            }
+
+            let canvas;
+            try {
+                canvas = cropper.getCroppedCanvas({ width: 500, height: 500, imageSmoothingQuality: 'high' });
+            } catch (err) {
+                console.error('getCroppedCanvas error:', err);
+                alert('Kırpma oluşturulamadı.');
+                return;
+            }
+
+            if (!canvas) {
+                alert('Kırpma başarısız.');
+                return;
+            }
+
+            // ensure toBlob support fallback
+            function canvasToBlob(canvas, cb) {
+                if (canvas.toBlob) {
+                    canvas.toBlob(cb, 'image/jpeg', 0.9);
+                } else {
+                    // fallback convert dataURL -> blob
+                    const dataURL = canvas.toDataURL('image/jpeg', 0.9);
+                    const byteString = atob(dataURL.split(',')[1]);
+                    const ab = new ArrayBuffer(byteString.length);
+                    const ia = new Uint8Array(ab);
+                    for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+                    cb(new Blob([ab], { type: 'image/jpeg' }));
+                }
+            }
+
+            $('#uploadCroppedImage').prop('disabled', true).text('Yükleniyor...');
+
+            canvasToBlob(canvas, function(blob) {
+                const formData = new FormData();
+                formData.append('profile_picture', blob, 'profile.jpg');
+
+                $.ajax({
+                    url: 'index.php?action=upload_profile_picture',
+                    method: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    dataType: 'json'
+                }).done(function(response) {
+                    console.log('Upload response:', response);
+                    if (response && response.status === 'success') {
+                        const newUrl = response.profile_picture_url + '?t=' + Date.now();
+                        $('#user-profile-img').attr('src', newUrl);
+                        if (typeof loadContacts === 'function') loadContacts();
+                        $('#profilePictureModal').modal('hide');
+
+                        // optional: show non-blocking message
+                        console.info('Profil fotoğrafı başarıyla yüklendi.');
+                    } else {
+                        console.warn('Upload failed:', response && response.message ? response.message : 'Unknown');
+                        $('#uploadCroppedImage').prop('disabled', false).text('Kaydet');
+                        // show inline error UI instead of alert (implement toast if needed)
+                    }
+                }).fail(function(xhr) {
+                    console.error('Upload AJAX failed:', xhr);
+                    // remove blocking alert; use console and optionally a toast
+                    $('#uploadCroppedImage').prop('disabled', false).text('Kaydet');
+                    // you can show a small inline error element here if desired
+                }).always(function() {
+                    // already handled above; keep as safety
+                    $('#uploadCroppedImage').prop('disabled', false).text('Kaydet');
+                });
+            });
+        }); // uploadCroppedImage click handler sonu
+    })(); // IIFE sonu
+
+    // load locations data once and populate country/city selects in profile modal
+    let _locationsCache = null;
+    function loadLocations(cb) {
+        if (_locationsCache) {
+            return cb(_locationsCache);
+        }
+        $.getJSON('assets/data/locations.json').done(function(data) {
+            _locationsCache = data;
+            cb(_locationsCache);
+        }).fail(function() {
+            console.error('Failed to load locations.json');
+            cb({});
+        });
+    }
+
+    function populateCountryCity(countryValue, cityValue) {
+        loadLocations(function(loc) {
+            const countries = Object.keys(loc);
+            const $country = $('#edit-country');
+            const $city = $('#edit-city');
+            $country.empty();
+            $country.append('<option value="">Select country</option>');
+            countries.forEach(c => $country.append(`<option value="${c}">${c}</option>`));
+            if (countryValue) $country.val(countryValue);
+            // populate cities for selected country
+            const cities = (loc[countryValue] || []);
+            $city.empty();
+            if (!cities.length) {
+                $city.append('<option value="">No cities</option>');
+            } else {
+                $city.append('<option value="">Select city</option>');
+                cities.forEach(ct => $city.append(`<option value="${ct}">${ct}</option>`));
+                if (cityValue) $city.val(cityValue);
+            }
+        });
+    }
+
+    // Open edit profile modal when username clicked
+    $(document).on('click', '#sidebar-username', function(e) {
+        e.preventDefault();
+        $('#edit-profile-error').hide().text('');
+        $('#edit-profile-success').hide().text('');
+        $('#save-profile-btn').prop('disabled', false).text('Save changes');
+        $('#add-friend-msg').hide().text('');
+
+        $.ajax({
+            url: 'index.php?action=get_profile',
+            type: 'GET',
+            dataType: 'json'
+        }).done(function(res) {
+            if (res && res.status === 'success' && res.user) {
+                const u = res.user;
+                $('#edit-username').val(u.username || '');
+                $('#edit-email').val(u.email || '');
+                // Friendship code eklendi
+                $('#your-friendship-code').val(u.friendship_code || '');
+                
+                // server-side may store country only; try to split if stored as "country|city"
+                let countryVal = u.country || '';
+                let cityVal = '';
+                if (countryVal && countryVal.indexOf('|') !== -1) {
+                    const parts = countryVal.split('|');
+                    countryVal = parts[0] || '';
+                    cityVal = parts[1] || '';
+                }
+                $('#edit-gender').val(u.gender || '');
+                $('#edit-dob').val(u.dob || '');
+                // created_at display
+                $('#edit-created-at').text(u.created_at ? (new Date(u.created_at)).toLocaleString() : '-');
+                // populate selects via locations data
+                populateCountryCity(countryVal, cityVal);
+                $('#edit-current-password').val('');
+                $('#edit-new-password').val('');
+                $('#edit-confirm-password').val('');
+                // ensure bootstrap modal API available
+                if (typeof $().modal === 'function') {
+                    $('#editProfileModal').modal('show');
+                } else if (window.bootstrap && bootstrap.Modal) {
+                    const modalEl = document.getElementById('editProfileModal');
+                    const modal = new bootstrap.Modal(modalEl);
+                    modal.show();
+                } else {
+                    console.error('Bootstrap modal not available.');
+                }
+            } else {
+                console.error('Failed to load profile:', res && res.message);
+            }
+        }).fail(function(xhr) {
+            console.error('Error fetching profile:', xhr.responseText || xhr.statusText);
+        });
+    });
+
+    /* old
+    $(document).on('click', '#copy-code-btn', function() {
+        const codeInput = document.getElementById('your-friendship-code');
+        if (codeInput) {
+            codeInput.select();
+            try {
+                document.execCommand('copy');
+                // Geçici başarı göstergesi
+                const $btn = $(this);
+                const originalHtml = $btn.html();
+                $btn.html('<i class="fa fa-check"></i>');
+                setTimeout(() => {
+                    $btn.html(originalHtml);
+                }, 1500);
+            } catch (err) {
+                console.error('Copy failed:', err);
+            }
+        }
+    });*/
+
+    // Yeni eklenen kod: Copy butonu işlevselliği
+    $(document).on('click', '#copy-code-btn', async function() {
+        const code = $('#your-friendship-code').val();
+        if (code) {
+            try {
+                await navigator.clipboard.writeText(code);
+                const $btn = $(this);
+                const originalHtml = $btn.html();
+                $btn.html('<i class="fa fa-check"></i>');
+                setTimeout(() => {
+                    $btn.html(originalHtml);
+                }, 1500);
+            } catch (err) {
+                console.error('Copy failed:', err);
+                // Fallback to old method
+                const codeInput = document.getElementById('your-friendship-code');
+                if (codeInput) {
+                    codeInput.select();
+                    document.execCommand('copy');
+                }
+            }
+        }
+    });
+
+    // when country select changes, update city select
+    $(document).on('change', '#edit-country', function() {
+        const country = $(this).val();
+        loadLocations(function(loc) {
+            const cities = loc[country] || [];
+            const $city = $('#edit-city');
+            $city.empty();
+            if (!cities.length) {
+                $city.append('<option value="">No cities</option>');
+            } else {
+                $city.append('<option value="">Select city</option>');
+                cities.forEach(ct => $city.append(`<option value="${ct}">${ct}</option>`));
+            }
+        });
+    });
+
+    // Add friend button in profile modal
+    $(document).on('click', '#add-friend-btn', function() {
+        const code = $('#add-friend-code').val().trim();
+        $('#add-friend-msg').hide().removeClass('text-success text-danger').text('');
+        if (!code) {
+            $('#add-friend-msg').addClass('text-danger').text('Please enter a friendship code.').show();
+            return;
+        }
+        $(this).prop('disabled', true).text('Adding...');
+        $.ajax({
+            url: 'index.php?action=add_contact',
+            type: 'POST',
+            dataType: 'json',
+            data: { friendship_code: code }
+        }).done(function(res) {
+            if (res && res.status === 'success') {
+                $('#add-friend-msg').addClass('text-success').text(res.message || 'Contact added.').show();
+                // refresh contacts list
+                if (typeof loadContacts === 'function') loadContacts();
+            } else {
+                $('#add-friend-msg').addClass('text-danger').text(res && res.message ? res.message : 'Failed to add contact.').show();
+            }
+        }).fail(function(xhr) {
+            let msg = 'Server error';
+            try { msg = JSON.parse(xhr.responseText).message || msg; } catch (e) {}
+            $('#add-friend-msg').addClass('text-danger').text(msg).show();
+        }).always(function() {
+            $('#add-friend-btn').prop('disabled', false).text('Add');
+        });
+    });
+
+    // Submit profile edit form (include city -> send as country|city to keep DB change-free)
+    $(document).on('submit', '#edit-profile-form', function(e) {
+        e.preventDefault();
+        $('#edit-profile-error').hide().text('');
+        $('#edit-profile-success').hide().text('');
+        $('#save-profile-btn').prop('disabled', true).text('Saving...');
+
+        const country = $('#edit-country').val() || '';
+        const city = $('#edit-city').val() || '';
+        // send combined value to server so DB schema doesn't need immediate change
+        const combinedCountry = country ? (country + (city ? '|' + city : '')) : '';
+
+        const formData = {
+            username: $('#edit-username').val().trim(),
+            country: combinedCountry,
+            gender: $('#edit-gender').val(),
+            dob: $('#edit-dob').val(),
+            current_password: $('#edit-current-password').val(),
+            new_password: $('#edit-new-password').val(),
+        };
+        formData.confirm_password = $('#edit-confirm-password').val();
+
+        $.ajax({
+            url: 'index.php?action=update_profile',
+            type: 'POST',
+            dataType: 'json',
+            data: formData
+        }).done(function(res) {
+            if (res && res.status === 'success' && res.user) {
+                $('#edit-profile-success').show().text(res.message || 'Saved.');
+                $('#sidebar-username').text(res.user.username);
+                if (res.user.profile_image) {
+                    $('#user-profile-img').attr('src', res.user.profile_image + '?t=' + Date.now());
+                }
+                setTimeout(function() {
+                    $('#editProfileModal').modal('hide');
+                }, 700);
+            } else {
+                $('#edit-profile-error').show().text(res && res.message ? res.message : 'Failed to save');
+            }
+        }).fail(function(xhr) {
+            let msg = 'Server error';
+            try { msg = JSON.parse(xhr.responseText).message || msg; } catch (e) {}
+            $('#edit-profile-error').show().text(msg);
+        }).always(function() {
+            $('#save-profile-btn').prop('disabled', false).text('Save changes');
+        });
+    });
+
     // Initial load for chat page
     if (window.location.search.includes('page=chat')) {
         loadContacts();
-        // Start polling for contacts even if no chat is selected
         contactPollingInterval = setInterval(function() {
             loadContacts();
         }, 5000);
-        // Optionally load messages for the first contact if available
-        // Or display a "Select a contact" message
     }
 
-    // --- Profile Picture Upload Functionality with Cropper.js ---
-    let cropper; // Global variable to hold the Cropper instance
-
-    $(document).on('change', '#profile-picture-upload', function() {
-        const fileInput = this;
-        if (fileInput.files && fileInput.files[0]) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                $('#imageToCrop').attr('src', e.target.result);
-                $('#imageCropModal').modal('show');
-            };
-            reader.readAsDataURL(fileInput.files[0]);
-        }
-    });
-
-    $('#imageCropModal').on('shown.bs.modal', function() {
-        const image = document.getElementById('imageToCrop');
-        cropper = new Cropper(image, {
-            aspectRatio: 1, // Square crop
-            viewMode: 1, // Restrict the crop box to not exceed the canvas
-            autoCropArea: 0.8, // 80% of the image
-            responsive: true,
-            background: false,
-            zoomable: true,
-            movable: true,
+    // Mobile view management
+    function initializeMobileView() {
+        const $sidebar = $('.messenger-sidebar');
+        const $content = $('.messenger-content');
+        
+        // Back button handler
+        $('#backToContacts').on('click', function() {
+            $sidebar.removeClass('hidden');
+            $content.addClass('hidden');
         });
-    }).on('hidden.bs.modal', function() {
-        if (cropper) {
-            cropper.destroy();
-            cropper = null;
-        }
-        // Clear the file input so that selecting the same file again triggers the change event
-        $('#profile-picture-upload').val('');
-    });
 
-    $('#cropAndUpload').on('click', function() {
-        if (cropper) {
-            cropper.getCroppedCanvas({
-                width: 250, // Desired width for the uploaded image
-                height: 250, // Desired height for the uploaded image
-            }).toBlob(function(blob) {
-                const formData = new FormData();
-                formData.append('profile_picture', blob, 'profile.jpg'); // 'profile.jpg' is the filename
+        // Contact click handler for mobile
+        $(document).on('click', '.messenger-link', function() {
+            if (window.innerWidth < 768) {
+                $sidebar.addClass('hidden');
+                $content.removeClass('hidden');
+            }
+        });
 
-                $.ajax({
-                    url: 'index.php?action=upload_profile_picture', // New PHP endpoint
-                    type: 'POST',
-                    data: formData,
-                    processData: false, // Important: tell jQuery not to process the data
-                    contentType: false, // Important: tell jQuery not to set contentType
-                    dataType: 'json',
-                    success: function(response) {
-                        if (response.status === 'success') {
-                            alert(response.message);
-                            // Update the profile picture source
-                            $('#user-profile-img').attr('src', response.profile_picture_url + '?' + new Date().getTime()); // Add timestamp to bust cache
-                            // Reload contacts and messages to reflect new profile picture
-                            loadContacts();
-                            if (currentChatFriendId) {
-                                loadMessages(currentChatFriendId);
-                            }
-                            $('#imageCropModal').modal('hide'); // Hide the modal after successful upload
-                        } else {
-                            alert(response.message);
-                        }
-                    },
-                    error: function(xhr, status, error) {
-                        console.error('Profile picture upload error:', {
-                            status: xhr.status,
-                            statusText: status,
-                            error: error,
-                            responseText: xhr.responseText
-                        });
-                        alert('An error occurred during profile picture upload: ' + xhr.responseText);
-                    }
-                });
-            }, 'image/jpeg'); // Specify the image format
-        }
-    });
-});
+        // Handle resize
+        $(window).on('resize', function() {
+            if (window.innerWidth >= 768) {
+                $sidebar.removeClass('hidden');
+                $content.removeClass('hidden');
+            }
+        });
+    }
+
+    // Initialize mobile view
+    initializeMobileView();
+}); // Closing the document ready function
+
+// Ensure to close any additional functions or blocks if necessary

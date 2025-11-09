@@ -1,3 +1,39 @@
+/* =========================================
+   1. General Layout & Variables
+   ========================================= */
+:root {
+    --sidebar-width: 320px;
+    --sidebar-collapsed-width: 80px;
+    --header-height: 60px;
+    --primary-color: #007bff;
+    --secondary-color: #6c757d;
+    --success-color: #28a745;
+    --border-color: #dee2e6;
+    --chat-bg: #f8f9fa;
+}
+
+body {
+    margin: 0;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* Styling for the user's profile image in the sidebar */
+#user-profile-img {
+    width: 50px;
+    height: 50px;
+    max-width: 50px;
+    max-height: 50px;
+    object-fit: cover; /* Ensures the image covers the area without distortion */
+}
+
+#chat-contact-img{
+    width: 50px;
+    height: 50px;
+    max-width: 50px;
+    max-height: 50px;
+}
+
 .app-content {
     margin-left: 0 !important;
 }
@@ -10,6 +46,13 @@
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
+    padding: 0 !important;
+    width: 100% !important; 
+}
+
+.register {
+    padding: 0 !important;
+    width: 100% !important; 
 }
 
 /* Sidebar Collapsed Styles */
@@ -47,10 +90,6 @@ body.sidebar-collapsed .messenger-sidebar .messenger-sidebar-footer {
     display: none; /* Hide "My Contacts" button */
 }
 
-body.sidebar-collapsed .app-content {
-    margin-left: 80px !important; /* Adjust content area to collapsed sidebar width */
-}
-
 /* Ensure the toggle button is always visible and positioned correctly */
 body.sidebar-collapsed .messenger-sidebar-header #sidebarToggle {
     position: absolute;
@@ -78,25 +117,204 @@ body.sidebar-collapsed .messenger-sidebar-header #sidebarToggle {
     display: none;
 }
 
-/* Styling for message status icons */
 .message-status-icon-wrapper {
-    background-color: white; /* White background for the wrapper */
-    border: 1px solid #ccc; /* Or any color you prefer for the border */
-    border-radius: 3px; /* Optional: for slightly rounded corners */
-    padding: 2px 4px; /* Adjust padding as needed */
-    margin-left: 5px; /* Adjust spacing from the message text */
-    display: inline-block; /* To apply padding and border correctly */
+    margin-left: 5px;
+    display: inline-block;
 }
 
-/* For the "Read" icon (fa-circle-check) */
-.message-status-icon-wrapper .fa-circle-check {
-    color: white !important; /* White icon, !important to override text-success */
-    background-color: black; /* Black background for the icon itself */
-    border-radius: 50%; /* Make it circular if desired */
-    padding: 1px; /* Adjust padding for the circular background */
+/* Contact images in different contexts */
+.messenger-media img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
 }
 
-/* For the "Sent" and "Delivered" icons (fa-check) */
-.message-status-icon-wrapper .fa-check {
-    color: white !important; /* White icon, !important to override any default color */
+#all-contacts-list .messenger-media img {
+    width: 40px;
+    height: 40px;
 }
+
+.widget-chat-media img {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+/* Profile picture upload related styles */
+#crop-container {
+    background-color: #f8f9fa;
+    overflow: hidden;
+    max-height: 400px;
+}
+
+.cropper-container {
+    max-height: 500px !important;
+}
+
+.cropper-view-box,
+.cropper-face {
+    border-radius: 50%;
+}
+
+#user-profile-img {
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+#user-profile-img:hover {
+    opacity: 0.8;
+}
+
+/* Modal içindeki resim container'ı */
+#profilePictureModal .modal-body {
+    padding: 0;
+    background: #f8f9fa;
+}
+
+/* =========================================
+   5. Responsive Design
+   ========================================= */
+@media (max-width: 767.98px) {
+    .messenger-sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 100%;
+        z-index: 1030;
+        transform: translateX(0);
+        transition: transform 0.3s ease;
+    }
+
+    .messenger-sidebar.hidden {
+        transform: translateX(-100%);
+    }
+
+    .messenger-content {
+        width: 100%;
+    }
+
+    .auth-image-side {
+        display: none;
+    }
+}
+
+/* =========================================
+   6. Utility Classes
+   ========================================= */
+.text-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 10px;
+    font-size: 0.75rem;
+}
+
+.badge-unread {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+/* =========================================
+   7. Animations
+   ========================================= */
+.fade-enter {
+    opacity: 0;
+}
+
+.fade-enter-active {
+    opacity: 1;
+    transition: opacity 200ms ease-in;
+}
+
+.fade-exit {
+    opacity: 1;
+}
+
+.fade-exit-active {
+    opacity: 0;
+    transition: opacity 200ms ease-in;
+}
+
+/* Auth Pages Styling */
+.auth-container {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+}
+
+.auth-form-side {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 400px;
+    border: 0;
+    border-radius: 15px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.1);
+    background: white;
+}
+
+.auth-image-side {
+    background: url('../img/login-bg.jpg') center/cover;
+    min-height: 100vh;
+    position: relative;
+}
+
+.auth-image-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    color: white;
+}
+
+/* Form Elements Styling */
+.form-control {
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+}
+
+.form-control:focus {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+}
+
+.btn-primary {
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 500;
+}
+
+/* Responsive Design */
+@media (max-width: 767.98px) {
+    .auth-container {
+        background: white;
+    }
+    
+    .auth-form-side {
+        padding: 1rem;
+    }
+    
+    .auth-card {
+        box-shadow: none;
+    }
+}
+
+
