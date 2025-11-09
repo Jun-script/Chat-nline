@@ -1,32 +1,40 @@
 <?php
 session_start();
+header('Content-Type: application/json');
 require_once '../config.php';
 
-header('Content-Type: application/json');
+$response = ['status' => 'error', 'message' => 'An unknown error occurred.'];
 
 if (!isset($_SESSION['user_id'])) {
-    echo json_encode(['status' => 'error', 'message' => 'Authentication required.']);
+    $response['message'] = 'User not logged in.';
+    echo json_encode($response);
     exit;
 }
 
-$user_id = $_SESSION['user_id'];
+$current_user_id = $_SESSION['user_id'];
 
 try {
-    // Fetch contacts (friends) of the logged-in user
-    // We join the contacts table with the users table to get friend's details
-    $stmt = $pdo->prepare(
-        "SELECT u.user_id, u.username, u.last_seen 
-         FROM contacts c
-         JOIN users u ON c.friend_id = u.user_id
-         WHERE c.user_id = ?"
-    );
-    $stmt->execute([$user_id]);
+    $stmt = $pdo->prepare("
+        SELECT 
+            u.user_id, 
+            u.username, 
+            u.email,
+            u.last_seen
+        FROM contacts c
+        JOIN users u ON c.friend_id = u.user_id
+        WHERE c.user_id = ?
+        ORDER BY u.username ASC
+    ");
+    $stmt->execute([$current_user_id]);
     $contacts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    echo json_encode(['status' => 'success', 'contacts' => $contacts]);
+    $response['status'] = 'success';
+    $response['message'] = 'Contacts retrieved successfully.';
+    $response['contacts'] = $contacts;
 
 } catch (PDOException $e) {
-    error_log($e->getMessage());
-    echo json_encode(['status' => 'error', 'message' => 'Database error.']);
+    $response['message'] = 'Database error: ' . $e->getMessage();
 }
+
+echo json_encode($response);
 ?>

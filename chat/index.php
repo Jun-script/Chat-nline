@@ -18,12 +18,6 @@ if ($is_logged_in && in_array($page, ['login', 'register'])) {
     exit;
 }
 
-
-// Sadece login/register sayfaları tam ekran, header olmadan gösterilecek
-if (!in_array($page, ['login', 'register'])) {
-    require_once 'pages/header.php';
-}
-
 switch ($page) {
     case 'login':
         require_once 'pages/login.php';
@@ -33,11 +27,9 @@ switch ($page) {
         break;
     case 'chat':
     default:
+        require_once 'pages/header.php';
+        require_once 'pages/sidebar.php';
         require_once 'pages/chat.php';
+        require_once 'pages/footer.php';
         break;
-}
-
-// Sadece login/register sayfaları tam ekran, footer olmadan gösterilecek
-if (!in_array($page, ['login', 'register'])) {
-    require_once 'pages/footer.php';
 }

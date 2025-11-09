@@ -1,46 +1,50 @@
 <?php
 session_start();
+header('Content-Type: application/json');
 require_once '../config.php';
 
-header('Content-Type: application/json');
+$response = ['status' => 'error', 'message' => 'An unknown error occurred.'];
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    echo json_encode(['status' => 'error', 'message' => 'Invalid request method.']);
-    exit;
-}
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $email = trim($_POST['email'] ?? '');
+    $password = $_POST['password'] ?? '';
 
-$email = trim($_POST['email'] ?? '');
-$password = $_POST['password'] ?? '';
-
-if (empty($email) || empty($password)) {
-    echo json_encode(['status' => 'error', 'message' => 'Email and password are required.']);
-    exit;
-}
-
-try {
-    // Find user by email
-    $stmt = $pdo->prepare("SELECT user_id, username, password FROM users WHERE email = ?");
-    $stmt->execute([$email]);
-    $user = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    // Verify user and password
-    if ($user && password_verify($password, $user['password'])) {
-        // Password is correct, start the session
-        $_SESSION['user_id'] = $user['user_id'];
-        $_SESSION['username'] = $user['username'];
-        
-        // Update last_seen timestamp
-        $updateStmt = $pdo->prepare("UPDATE users SET last_seen = CURRENT_TIMESTAMP WHERE user_id = ?");
-        $updateStmt->execute([$user['user_id']]);
-
-        echo json_encode(['status' => 'success', 'message' => 'Login successful! Redirecting...']);
-    } else {
-        // Invalid credentials
-        echo json_encode(['status' => 'error', 'message' => 'Invalid email or password.']);
+    if (empty($email) || empty($password)) {
+        $response['message'] = 'Email and password are required.';
+        echo json_encode($response);
+        exit;
     }
 
-} catch (PDOException $e) {
-    error_log($e->getMessage());
-    echo json_encode(['status' => 'error', 'message' => 'Database error. Please try again later.']);
+    try {
+        $stmt = $pdo->prepare("SELECT user_id, username, password, friendship_code FROM users WHERE email = ?");
+        $stmt->execute([$email]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($user && password_verify($password, $user['password'])) {
+            $_SESSION['user_id'] = $user['user_id'];
+            $_SESSION['username'] = $user['username'];
+            $_SESSION['friendship_code'] = $user['friendship_code'];
+            
+            // Update last_seen timestamp
+            $update_stmt = $pdo->prepare("UPDATE users SET last_seen = CURRENT_TIMESTAMP WHERE user_id = ?");
+            $update_stmt->execute([$user['user_id']]);
+
+            $response['status'] = 'success';
+            $response['message'] = 'Login successful!';
+            $response['user'] = [
+                'user_id' => $user['user_id'],
+                'username' => $user['username'],
+                'friendship_code' => $user['friendship_code']
+            ];
+        } else {
+            $response['message'] = 'Invalid email or password.';
+        }
+    } catch (PDOException $e) {
+        $response['message'] = 'Database error: ' . $e->getMessage();
+    }
+} else {
+    $response['message'] = 'Invalid request method.';
 }
+
+echo json_encode($response);
 ?>

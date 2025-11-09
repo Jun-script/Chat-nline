@@ -1,52 +1,48 @@
 <?php
 session_start();
+header('Content-Type: application/json');
 require_once '../config.php';
 
-header('Content-Type: application/json');
-
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    echo json_encode(['status' => 'error', 'message' => 'Invalid request method.']);
-    exit;
-}
+$response = ['status' => 'error', 'message' => 'An unknown error occurred.'];
 
 if (!isset($_SESSION['user_id'])) {
-    echo json_encode(['status' => 'error', 'message' => 'Authentication required.']);
+    $response['message'] = 'User not logged in.';
+    echo json_encode($response);
     exit;
 }
 
 $sender_id = $_SESSION['user_id'];
-$receiver_id = $_POST['receiver_id'] ?? null;
-$message = trim($_POST['message'] ?? '');
 
-if (!$receiver_id || empty($message)) {
-    echo json_encode(['status' => 'error', 'message' => 'Receiver ID and message text are required.']);
-    exit;
-}
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $receiver_id = $_POST['receiver_id'] ?? null;
+    $message_text = trim($_POST['message'] ?? '');
 
-try {
-    $stmt = $pdo->prepare(
-        "INSERT INTO messages (sender_id, receiver_id, message) VALUES (?, ?, ?)"
-    );
-    
-    if ($stmt->execute([$sender_id, $receiver_id, $message])) {
-        $new_message_id = $pdo->lastInsertId();
-        echo json_encode([
-            'status' => 'success', 
-            'message' => 'Message sent successfully.',
-            'new_message' => [
-                'message_id' => $new_message_id,
-                'sender_id' => $sender_id,
-                'receiver_id' => $receiver_id,
-                'message' => $message,
-                'created_at' => date('Y-m-d H:i:s') // Approximate time
-            ]
-        ]);
-    } else {
-        echo json_encode(['status' => 'error', 'message' => 'Failed to send message.']);
+    if (empty($receiver_id) || empty($message_text)) {
+        $response['message'] = 'Receiver ID and message cannot be empty.';
+        echo json_encode($response);
+        exit;
     }
 
-} catch (PDOException $e) {
-    error_log($e->getMessage());
-    echo json_encode(['status' => 'error', 'message' => 'Database error.']);
+    try {
+        $stmt = $pdo->prepare("INSERT INTO messages (sender_id, receiver_id, message) VALUES (?, ?, ?)");
+        if ($stmt->execute([$sender_id, $receiver_id, $message_text])) {
+            $last_insert_id = $pdo->lastInsertId();
+            $stmt = $pdo->prepare("SELECT * FROM messages WHERE message_id = ?");
+            $stmt->execute([$last_insert_id]);
+            $new_message = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            $response['status'] = 'success';
+            $response['message'] = 'Message sent successfully.';
+            $response['new_message'] = $new_message;
+        } else {
+            $response['message'] = 'Failed to send message.';
+        }
+    } catch (PDOException $e) {
+        $response['message'] = 'Database error: ' . $e->getMessage();
+    }
+} else {
+    $response['message'] = 'Invalid request method.';
 }
+
+echo json_encode($response);
 ?>
